@@ -14,9 +14,11 @@ void loader_cleanup() {
 /*
  * Load and run the ELF executable file
  */
-void load_and_run_elf(char** exe) {
+int main(char* exe) {
   fd = open(exe, O_RDONLY);
   // 1. Load entire binary content into the memory from the ELF file.
+  
+
   // 2. Iterate through the PHDR table and find the section of PT_LOAD 
   //    type that contains the address of the entrypoint method in fib.c
   // 3. Allocate memory of the size "p_memsz" using mmap function 
@@ -26,4 +28,5 @@ void load_and_run_elf(char** exe) {
   // 6. Call the "_start" method and print the value returned from the "_start"
   int result = _start();
   printf("User _start return value = %d\n",result);
+  return 0;
 }
