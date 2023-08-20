@@ -15,21 +15,30 @@ int fd;
  * Load and run the ELF executable file
  */
 int main() {
-  char exe[] = "/mnt/c/Users/Sidhartha Garg/documents/github/CSE231_OS_GroupAss/Assignment-1/starter/with-bonus/test/a.out";
+  char exe[] = "Assignment-1/starter/with-bonus/test/a.out";
   fd = open(exe, O_RDONLY);
+
+  // rewind(fd);
   // 1. Load entire binary content into the memory from the ELF file.
   ehdr = malloc(sizeof(Elf32_Ehdr));
   read(fd,ehdr,sizeof(Elf32_Ehdr));
+
+  printf("e_entry = %x\n",ehdr -> e_entry);
+
+  for(int i = 0; i < 16; i++){
+    printf("%x ", ehdr->e_ident[i]);
+  }
+  printf("\n");
 
   // 2. Iterate through the PHDR table and find the section of PT_LOAD 
   //    type that contains the address of the entrypoint method in fib.c
   for(int i = 0; i < ehdr -> e_phnum; i++){
     phdr = malloc(ehdr -> e_phnum * sizeof(Elf32_Phdr));
     read(fd,phdr,sizeof(Elf32_Phdr));
-    if (phdr -> p_type == 1 && phdr -> p_vaddr <= ehdr -> e_entry && phdr -> p_vaddr + phdr >=)
+    // if (phdr -> p_type == 1 && phdr -> p_vaddr <= ehdr -> e_entry && phdr -> p_vaddr + phdr >=){};
   }
   // second program header check 
-  read
+  // read;
   
 //   ehdr -> p
 //   phdr -> p_type
