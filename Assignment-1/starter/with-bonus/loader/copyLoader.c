@@ -48,7 +48,7 @@ int main() {
 
   // 3. Allocate memory of the size "p_memsz" using mmap function 
   //    and then copy the segment content
-  void * virtual_mem = mmap(NULL, segmntHdr->p_memsz, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_ANONYMOUS|MAP_PRIVATE, 0, 0);
+  void * virtual_mem = mmap(NULL, segmntHdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
   printf("%p\n", virtual_mem);
 
   char * virtual_memC = virtual_mem;
@@ -62,19 +62,20 @@ int main() {
   }
   printf("\n");
 
-  
-
-  
-
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
-  // printf("%x\n", segment->p_memsz);
+
+  int address = ehdr->e_entry - segmntHdr->p_vaddr;
+  printf("%x", address);
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
+
+  int (*_start)() = &virtual_memC[address];
+
+
   // 6. Call the "_start" method and print the value returned from the "_start"
 
-
-  // int result = _start();
-  // printf("User _start return value = %d\n",result);
+  int result = _start();
+  printf("User _start return value = %d\n",result);
 
   return 0;
 }
