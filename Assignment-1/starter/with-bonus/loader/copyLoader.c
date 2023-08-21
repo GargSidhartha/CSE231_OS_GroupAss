@@ -48,16 +48,23 @@ int main() {
 
   // 3. Allocate memory of the size "p_memsz" using mmap function 
   //    and then copy the segment content
-  void * virtual_mem = mmap(NULL, phdr->p_memsz, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_ANONYMOUS|MAP_PRIVATE, 0, 0);
+  void * virtual_mem = mmap(NULL, segmntHdr->p_memsz, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_ANONYMOUS|MAP_PRIVATE, 0, 0);
+  printf("%p\n", virtual_mem);
 
-  // segment -> p_align = phdr -> p_align;
-  // segment -> p_vaddr = phdr -> p_vaddr;
-  // segment -> p_memsz = phdr -> p_memsz;
-  // segment -> p_paddr = phdr -> p_paddr;
-  // segment -> p_type = phdr -> p_type;
-  // segment -> p_offset = phdr -> p_offset;
-  // segment -> p_filesz = phdr -> p_filesz;
+  char * virtual_memC = virtual_mem;
+  // printf("%s\n", virtual_memC);
+ 
+  lseek(fd, segmntHdr->p_offset, SEEK_SET);
+  read(fd, virtual_memC, segmntHdr->p_memsz);
 
+  for(int i = 0; i < segmntHdr->p_memsz; i++){
+    printf("%x ", virtual_memC[i]);
+  }
+  printf("\n");
+
+  
+
+  
 
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
   // printf("%x\n", segment->p_memsz);
