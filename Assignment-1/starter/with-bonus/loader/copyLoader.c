@@ -35,10 +35,14 @@ int main() {
   for(int i = 0; i < ehdr -> e_phnum; i++){
     phdr = malloc(ehdr -> e_phnum * sizeof(Elf32_Phdr));
     read(fd,phdr,sizeof(Elf32_Phdr));
-    // if (phdr -> p_type == 1 && phdr -> p_vaddr <= ehdr -> e_entry && phdr -> p_vaddr + phdr >=){};
+    if (phdr -> p_type == 1 && phdr -> p_vaddr <= ehdr -> e_entry && phdr -> p_vaddr + 0x1000 > ehdr -> e_entry){
+      break;
+    }
   }
   // second program header check 
-  // read;
+  printf("%x\n", phdr->p_offset);
+
+  // Elf32_Phdr segment = (*Elf32_Phdr)mmap(NULL, phdr->p)
   
 //   ehdr -> p
 //   phdr -> p_type
