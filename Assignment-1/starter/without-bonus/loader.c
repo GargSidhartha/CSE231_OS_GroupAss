@@ -67,8 +67,9 @@ void load_and_run_elf(char* exe) {
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
 
-  int _start() = virtual_memC[address];
+  // int _start() = virtual_memC[address];
 
+  int (*_start)() = (int (*)())(virtual_memC + address);
 
   // 6. Call the "_start" method and print the value returned from the "_start"
 
