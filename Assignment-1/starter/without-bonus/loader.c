@@ -25,12 +25,12 @@ void load_and_run_elf(char* exe) {
   ehdr = malloc(sizeof(Elf32_Ehdr));
   read(fd,ehdr,sizeof(Elf32_Ehdr));
 
-  printf("e_entry = %x\n",ehdr -> e_entry);
+  // printf("e_entry = %x\n",ehdr -> e_entry);
 
-  for(int i = 0; i < 16; i++){
-    printf("%x ", ehdr->e_ident[i]);
-  }
-  printf("\n");
+  // for(int i = 0; i < 16; i++){
+  //   printf("%x ", ehdr->e_ident[i]);
+  // }
+  // printf("\n");
 
   // 2. Iterate through the PHDR table and find the section of PT_LOAD 
   //    type that contains the address of the entrypoint method in fib.c
@@ -42,12 +42,12 @@ void load_and_run_elf(char* exe) {
     }
   }
   // second program header check 
-  printf("%x\n", phdr->p_align);
+  // printf("%x\n", phdr->p_align);
 
   // 3. Allocate memory of the size "p_memsz" using mmap function 
   //    and then copy the segment content
   void * virtual_mem = mmap(NULL, segmntHdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
-  printf("%p\n", virtual_mem);
+  // printf("%p\n", virtual_mem);
 
   char * virtual_memC = virtual_mem;
   // printf("%s\n", virtual_memC);
@@ -55,21 +55,21 @@ void load_and_run_elf(char* exe) {
   lseek(fd, segmntHdr->p_offset, SEEK_SET);
   read(fd, virtual_memC, segmntHdr->p_memsz);
 
-  for(int i = 0; i < segmntHdr->p_memsz; i++){
-    printf("%x ", virtual_memC[i]);
-  }
-  printf("\n");
+  // for(int i = 0; i < segmntHdr->p_memsz; i++){
+  //   printf("%x ", virtual_memC[i]);
+  // }
+  // printf("\n");
 
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
 
   int address = ehdr->e_entry - segmntHdr->p_vaddr;
-  printf("%x", address);
+  // printf("%x", address);
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
 
   // int _start() = virtual_memC[address];
 
-  int (*_start)() = (int (*)())(virtual_memC + address);
+  int (*_start)() = (int (*)())(virtual_mem + address);
 
   // 6. Call the "_start" method and print the value returned from the "_start"
 
