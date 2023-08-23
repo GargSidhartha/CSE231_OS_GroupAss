@@ -16,14 +16,76 @@ void loader_cleanup() {
 }
 
 /*
+  To check if file is 32-bit 
+*/
+int is32Bit(Elf32_Ehdr * ehdr) {
+  if(ehdr->e_ident[4] == 1){
+    return 0;
+  }
+  else if (ehdr->e_ident[4] == 0) {
+    printf("Invalid class ELF file\n");
+    exit(1);
+    return 1;
+  }
+  else if (ehdr->e_ident[4] == 2) {
+    printf("ELF file is 64-bit\n");
+    exit(1);
+    return 1;
+  }
+}
+
+/*
+  to check the type
+*/
+int isExec(Elf32_Ehdr * ehdr){
+  if(ehdr->e_type == 2){
+    return 0;
+  }
+  else {
+    printf("Not an ELF executable\n");
+    exit(1);
+    return 1;
+  }
+}
+
+/*
+  to check ELF ident
+*/
+int checkELFIdent(Elf32_Ehdr * ehdr) {
+  if (ehdr->e_ident[0] == 0x7f && ehdr->e_ident[1] == 'E' && ehdr->e_ident[2] == 'L' && ehdr->e_ident == 'F') {
+    return 0;
+  }
+  else {
+    printf("Invalid Magic Number");
+    exit(1);
+    return 1;
+  }
+}
+
+/*
  * Load and run the ELF executable file
  */
 void load_and_run_elf(char* exe) {
   fd = open(exe, O_RDONLY);
 
+  if (fd == -1){
+    printf("Invalid ELF file addres, file not opening\n");
+    exit(1);
+    return;
+  }
+
   // 1. Load entire binary content into the memory from the ELF file.
   ehdr = malloc(sizeof(Elf32_Ehdr));
   read(fd,ehdr,sizeof(Elf32_Ehdr));
+
+  //checks
+  int flag = 0;
+  flag = flag + is32Bit(ehdr) + isExec(ehdr) + checkELFIdent(ehdr);
+  if(flag != 0){
+    printf("Errors detected, exiting\n");
+    exit(1);
+    return;
+  }
 
 
   // 2. Iterate through the PHDR table and find the section of PT_LOAD 
@@ -38,10 +100,21 @@ void load_and_run_elf(char* exe) {
 
   // 3. Allocate memory of the size "p_memsz" using mmap function 
   //    and then copy the segment content
+  if (segmntHdr == NULL){
+    printf("No .text segment with type LOAD found in the file, exiting\n");
+    exit(1);
+    return;
+  }
+
   void * virtual_mem = mmap(NULL, segmntHdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
   char * virtual_memC = virtual_mem;
  
-  lseek(fd, segmntHdr->p_offset, SEEK_SET);
+  off_t seek = lseek(fd, segmntHdr->p_offset, SEEK_SET);
+  if(seek == -1){
+    printf("Cant seek to the specified address of segment .text, exiting\n");
+    exit(1);
+    return;
+  }
   read(fd, virtual_memC, segmntHdr->p_memsz);
 
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
