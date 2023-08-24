@@ -52,7 +52,7 @@ int isExec(Elf32_Ehdr * ehdr){
   to check ELF ident
 */
 int checkELFIdent(Elf32_Ehdr * ehdr) {
-  if (ehdr->e_ident[0] == 0x7f && ehdr->e_ident[1] == 'E' && ehdr->e_ident[2] == 'L' && ehdr->e_ident == 'F') {
+  if (ehdr->e_ident[0] == 0x7f && ehdr->e_ident[1] == 'E' && ehdr->e_ident[2] == 'L' && ehdr->e_ident[3] == 'F') {
     return 0;
   }
   else {
