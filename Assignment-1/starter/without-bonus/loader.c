@@ -16,6 +16,53 @@ void loader_cleanup() {
 }
 
 /*
+  To check if file is 32-bit 
+*/
+int is32Bit(Elf32_Ehdr * ehdr) {
+  if(ehdr->e_ident[4] == 1){
+    return 0;
+  }
+  else if (ehdr->e_ident[4] == 0) {
+    printf("Invalid class ELF file\n");
+    exit(1);
+    return 1;
+  }
+  else if (ehdr->e_ident[4] == 2) {
+    printf("ELF file is 64-bit\n");
+    exit(1);
+    return 1;
+  }
+}
+
+/*
+  to check the type
+*/
+int isExec(Elf32_Ehdr * ehdr){
+  if(ehdr->e_type == 2){
+    return 0;
+  }
+  else {
+    printf("Not an ELF executable\n");
+    exit(1);
+    return 1;
+  }
+}
+
+/*
+  to check ELF ident
+*/
+int checkELFIdent(Elf32_Ehdr * ehdr) {
+  if (ehdr->e_ident[0] == 0x7f && ehdr->e_ident[1] == 'E' && ehdr->e_ident[2] == 'L' && ehdr->e_ident == 'F') {
+    return 0;
+  }
+  else {
+    printf("Invalid Magic Number");
+    exit(1);
+    return 1;
+  }
+}
+
+/*
  * Load and run the ELF executable file
  */
 void load_and_run_elf(char* exe) {
@@ -31,6 +78,15 @@ void load_and_run_elf(char* exe) {
   //   printf("%x ", ehdr->e_ident[i]);
   // }
   // printf("\n");
+
+  //checks
+  int flag = 0;
+  flag = flag + is32Bit(ehdr) + isExec(ehdr) + checkELFIdent(ehdr);
+  if(flag != 0){
+    printf("Errors detected, exiting\n");
+    exit(1);
+    return;
+  }
 
   // 2. Iterate through the PHDR table and find the section of PT_LOAD 
   //    type that contains the address of the entrypoint method in fib.c
