@@ -42,7 +42,7 @@ int launch(char** args, int arg_num){
     return 1;
 }
 
-int execute(char* command){
+int execute(char* command,char** command_history,int history_size){
     int status = 1;
     
     //splitting the command
@@ -65,9 +65,19 @@ int execute(char* command){
         exit(0);
         return 0;
     }
+    else if (strcmp(args[0],"history") == 0){
+        if (history_size != 0){
+            for (int i = 0; i < history_size;i++ ){
+                printf("%s",command_history[i]);
+            }
+        }
+        
+    }
 
-
-    status = launch(args, arg_num);
+    else{
+        status = launch(args, arg_num);
+    }
+    
 
     return status;
 }
@@ -102,9 +112,9 @@ int main(){
             command_history[history_size] = strdup(command);
             history_size++;
             
-            
 
-            status = execute(command);
+
+            status = execute(command,command_history,history_size);
 
         }
     }
