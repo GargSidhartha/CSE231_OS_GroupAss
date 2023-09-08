@@ -8,6 +8,6 @@
 #include<readline/history.h>
   
 #define COMLEN 1000
-#define MAXLIST 100 
+#define COMHISLEN 100 
 
 #define clear() printf("\033[H\033[J")
