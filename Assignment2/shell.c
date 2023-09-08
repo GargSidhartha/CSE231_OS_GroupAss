@@ -10,7 +10,6 @@ void init_shell()
     char* username = getenv("USER");
     printf("\n\n\nUSER is: @%s", username);
     printf("\n");
-    sleep(1);
     
 }
 
@@ -61,27 +60,12 @@ int execute(char* command){
 
     args[arg_num - 1][strcspn(args[arg_num - 1], "\n")] = '\0';
 
-
+    //list down the builtin shell commands here to add support
     if(strcmp(args[0], "exit") == 0) {
         exit(0);
         return 0;
     }
 
-
-    // //echo
-    // else if (strcmp(args[0], "echo") == 0){
-    //     for(int i=1; i<arg_num; i++){
-    //         printf("%s ", args[i]);
-    //     }
-    //     printf("\n");
-    // }
-
-    // //pwd
-    // else if (strcmp(args[0], "pwd") == 0){
-    //     char cwd[COMLEN];
-    //     getcwd(cwd, sizeof(cwd));
-    //     printf("%s\n", cwd);
-    // }
 
     status = launch(args, arg_num);
 
@@ -96,7 +80,8 @@ int main(){
     int history_size = 0;
 
     do{
-        printf("kuch bhi: ~$ > ");
+        char* user = getenv("USER");
+        printf("%s:~$ > ",user);
         char command[COMLEN];
 
         if(fgets(command,COMLEN,stdin)==NULL){
@@ -116,10 +101,8 @@ int main(){
             command_history = realloc(command_history, (history_size + 1) * sizeof(char *));
             command_history[history_size] = strdup(command);
             history_size++;
-            // for(int i=0; i<history_size; i++){
-            //     printf("%s\n", command_history[i]);
-            // }
-            // command history
+            
+            
 
             status = execute(command);
 
