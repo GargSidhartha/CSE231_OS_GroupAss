@@ -3,12 +3,10 @@
 void init_shell()
 {
     clear();
-    printf("\n\n\n\n******************"
-        "************************");
-    printf("\n\n\n\t****MY SHELL****");
-    printf("\n\n\t-USE AT YOUR OWN RISK-");
-    printf("\n\n\n\n*******************"
-        "***********************");
+    printf("\n\n\n\n---------------------------------------------------");
+    printf("\n\n\n\t****A SimpleSHELL****");
+    printf("\n\n\t-SakshsamSingh\n\tSidharthaGarg-");
+    printf("\n\n\n\n---------------------------------------------------");
     char* username = getenv("USER");
     printf("\n\n\nUSER is: @%s", username);
     printf("\n");
@@ -17,7 +15,9 @@ void init_shell()
 }
 
 int launch(char** args, int arg_num){
-    if (strcmp(args[0], "exit") == 0) return 0;
+    // for (int i = 0; i < arg_num;i++){
+    //     printf("%s\n",args[i]);
+    // }
 
     int status = fork();
 
@@ -25,29 +25,15 @@ int launch(char** args, int arg_num){
         printf("Forking failed\n");
     }
     else if(status == 0){
-        //echo
-        if (strcmp(args[0], "echo") == 0){
-            for(int i=1; i<arg_num; i++){
-                printf("%s ", args[i]);
-            }
-            printf("\n");
-            exit(SIGKILL);
-        }
-
-
-        //pwd
-        else if (strcmp(args[0], "pwd") == 0){
-            char cwd[COMLEN];
-            getcwd(cwd, sizeof(cwd));
-            printf("%s\n", cwd);
-            exit(SIGKILL);
-        }
-
-        else{
-            printf("Command not found\n");
-        }
-
         printf("Child process\n");
+        char path[256];
+        snprintf(path, sizeof(path), "/usr/bin/%s", args[0]);
+
+        if (execv(path, args) < 0) {
+            perror("Command not found");
+        }
+
+        exit(1);
     }
     else{
         wait(NULL);
