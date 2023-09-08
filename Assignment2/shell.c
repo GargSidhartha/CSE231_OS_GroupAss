@@ -16,6 +16,47 @@ void init_shell()
     
 }
 
+int launch(char** args, int arg_num){
+    if (strcmp(args[0], "exit") == 0) return 0;
+
+    int status = fork();
+
+    if(status < 0){
+        printf("Forking failed\n");
+    }
+    else if(status == 0){
+        //echo
+        if (strcmp(args[0], "echo") == 0){
+            for(int i=1; i<arg_num; i++){
+                printf("%s ", args[i]);
+            }
+            printf("\n");
+            exit(SIGKILL);
+        }
+
+
+        //pwd
+        else if (strcmp(args[0], "pwd") == 0){
+            char cwd[COMLEN];
+            getcwd(cwd, sizeof(cwd));
+            printf("%s\n", cwd);
+            exit(SIGKILL);
+        }
+
+        else{
+            printf("Command not found\n");
+        }
+
+        printf("Child process\n");
+    }
+    else{
+        wait(NULL);
+        printf("Parent process\n");
+    }
+
+    return 1;
+}
+
 int execute(char* command){
     int status = 1;
     
@@ -35,23 +76,29 @@ int execute(char* command){
     args[arg_num - 1][strcspn(args[arg_num - 1], "\n")] = '\0';
 
 
-    if(strcmp(args[0], "exit") == 0) return 0;
-
-
-    //echo
-    else if (strcmp(args[0], "echo") == 0){
-        for(int i=1; i<arg_num; i++){
-            printf("%s ", args[i]);
-        }
-        printf("\n");
+    if(strcmp(args[0], "exit") == 0) {
+        exit(0);
+        return 0;
     }
 
-    //pwd
-    else if (strcmp(args[0], "pwd") == 0){
-        char cwd[COMLEN];
-        getcwd(cwd, sizeof(cwd));
-        printf("%s\n", cwd);
-    }
+
+    // //echo
+    // else if (strcmp(args[0], "echo") == 0){
+    //     for(int i=1; i<arg_num; i++){
+    //         printf("%s ", args[i]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // //pwd
+    // else if (strcmp(args[0], "pwd") == 0){
+    //     char cwd[COMLEN];
+    //     getcwd(cwd, sizeof(cwd));
+    //     printf("%s\n", cwd);
+    // }
+
+    status = launch(args, arg_num);
+
     return status;
 }
 
