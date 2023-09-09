@@ -1,4 +1,15 @@
 #include "headers.h"
+typedef struct command_info{
+    int pid;
+    long start_time;
+    long end_time;
+    long exec_time;
+    char** command;
+    int arg_count;
+}command_info;
+
+command_info* commands[COMHISLEN];
+int com_counter = 0;
 
 void init_shell()
 {
@@ -25,18 +36,31 @@ int launch(char** args, int arg_num){
     }
     else if(status == 0){
         printf("Child process\n");
-        char path[256];
-        snprintf(path, sizeof(path), "/usr/bin/%s", args[0]);
+        
+        command_info* info = malloc(sizeof(command_info));
+        info -> command = args;
+        info -> arg_count = arg_num;
+        info -> pid = getpid();
+        info -> start_time = clock();
 
-        if (execv(path, args) < 0) {
+        printf("%ld\n", info -> start_time);
+
+        info -> end_time = clock();
+        info -> exec_time = info -> end_time - info -> start_time;
+
+        commands[com_counter] = info;
+
+        if (execvp(args[0], args) < 0) {
             perror("Command not found");
         }
-
+    
+        
         exit(1);
     }
     else{
         wait(NULL);
         printf("Parent process\n");
+        
     }
 
     return 1;
@@ -115,6 +139,9 @@ int main(){
 
 
             status = execute(command,command_history,history_size);
+
+            printf("%d\n",commands[com_counter] -> pid);
+            
 
         }
     }

@@ -6,7 +6,7 @@
 #include<sys/wait.h>
 #include<readline/readline.h>
 #include<readline/history.h>
-  
+#include<time.h>
 #define COMLEN 1000
 #define COMHISLEN 100 
 
