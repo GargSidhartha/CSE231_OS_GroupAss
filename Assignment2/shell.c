@@ -29,37 +29,40 @@ int launch(char** args, int arg_num){
     //     printf("%s\n",args[i]);
     // }
 
+    int start_time = clock();
     int status = fork();
+    
 
     if(status < 0){
         printf("Forking failed\n");
     }
     else if(status == 0){
         printf("Child process\n");
-        
-        command_info* info = malloc(sizeof(command_info));
-        info -> command = args;
-        info -> arg_count = arg_num;
-        info -> pid = getpid();
-        info -> start_time = clock();
-
-        printf("%ld\n", info -> start_time);
-
-        info -> end_time = clock();
-        info -> exec_time = info -> end_time - info -> start_time;
-
-        commands[com_counter] = info;
+        printf("%d\n",getpid());
 
         if (execvp(args[0], args) < 0) {
             perror("Command not found");
         }
-    
-        
+
         exit(1);
     }
     else{
         wait(NULL);
         printf("Parent process\n");
+        
+        command_info* info = malloc(sizeof(command_info));
+        info -> pid = status;
+        info -> end_time = clock();
+        info -> start_time = start_time;
+        info -> exec_time = info -> end_time - info -> start_time;
+        info -> command = args;
+        info -> arg_count = arg_num;
+
+        commands[com_counter] = info;
+
+        com_counter ++;
+
+        
         
     }
 
@@ -86,6 +89,18 @@ int execute(char* command,char** command_history,int history_size){
 
     //list down the builtin shell commands here to add support
     if(strcmp(args[0], "exit") == 0) {
+        printf("Command_History:\n");
+        for (int i = 0; i < com_counter; i++){
+            printf("%d ",commands[i] -> pid);
+            for (int j = 0; j < commands[i] -> arg_count; j++){
+                printf("%s ",commands[i] -> command[j]);
+            }
+            printf("%ld ",commands[i] -> start_time);
+            printf("%ld ",commands[i] -> exec_time);
+            printf("\n");
+            
+        }
+        
         exit(0);
         return 0;
     }
@@ -140,7 +155,7 @@ int main(){
 
             status = execute(command,command_history,history_size);
 
-            printf("%d\n",commands[com_counter] -> pid);
+            
             
 
         }
