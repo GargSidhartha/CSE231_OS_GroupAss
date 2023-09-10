@@ -11,6 +11,8 @@ typedef struct command_info{
 command_info* commands[COMHISLEN];
 int com_counter = 0;
 
+
+
 void init_shell()
 {
     clear();
@@ -68,8 +70,24 @@ int launch(char** args, int arg_num){
 
     return 1;
 }
-
+void cntrl_cHandler(int signum) {
+    if(signum == SIGINT) {
+        printf("\n");
+        for (int i = 0; i < com_counter; i++){
+            printf("%d ",commands[i] -> pid);
+            for (int j = 0; j < commands[i] -> arg_count; j++){
+                printf("%s ",commands[i] -> command[j]);
+            }
+            printf("%ld ",commands[i] -> start_time);
+            printf("%ld ",commands[i] -> exec_time);
+            printf("\n");
+        }
+        exit(1);
+    }
+}
 int execute(char* command,char** command_history,int history_size){
+    signal(SIGINT, cntrl_cHandler);
+
     int status = 1;
     
     //splitting the command
@@ -113,6 +131,7 @@ int execute(char* command,char** command_history,int history_size){
         
     }
 
+
     else{
         status = launch(args, arg_num);
     }
@@ -121,6 +140,7 @@ int execute(char* command,char** command_history,int history_size){
 }
 
 int execute_pip(char* command, char** command_history, int history_size) {
+    
     int status = 1;
     char** arg_pipe = NULL;
     int pipe_num = 0;
@@ -153,6 +173,8 @@ int execute_pip(char* command, char** command_history, int history_size) {
     free(arg_pipe);
     return status;
 }
+
+
 
 int main(){
     init_shell();
