@@ -27,7 +27,7 @@ void init_shell()
 }
 
 
-int launch(char** args, int arg_num){
+int launch(char** args, int arg_num, bool is_pipe){
     // for (int i = 0; i < arg_num;i++){
     //     printf("%s\n",args[i]);
     // }
@@ -45,10 +45,12 @@ int launch(char** args, int arg_num){
         printf("Child process\n");
 
         // Redirect input and output if necessary
-        close(fd[0]);
-        dup2(fd[1], STDOUT_FILENO);
-            
+        if (is_pipe) {
+            close(fd[0]);
+            dup2(fd[1], STDOUT_FILENO);
+        }
 
+        
         if (execvp(args[0], args) < 0) {
             perror("Command not found");
         }
@@ -57,8 +59,11 @@ int launch(char** args, int arg_num){
     } else {
         wait(NULL);
         printf("Parent process\n");
-        close(fd[1]);
-        dup2(fd[0],STDIN_FILENO);
+        
+        if (is_pipe) {
+            close(fd[1]);
+            dup2(fd[0], STDIN_FILENO);
+        }
     
 
         command_info* info = malloc(sizeof(command_info));
@@ -94,7 +99,8 @@ void cntrl_cHandler(int signum) {
         exit(1);
     }
 }
-int execute(char* command,char** command_history,int history_size){
+
+int execute(char* command,char** command_history,int history_size, bool is_pipe){
     signal(SIGINT, cntrl_cHandler);
 
     int status = 1;
@@ -139,10 +145,8 @@ int execute(char* command,char** command_history,int history_size){
         }
         
     }
-
-
     else{
-        status = launch(args, arg_num);
+        status = launch(args, arg_num, is_pipe);
     }
     
     return status;
@@ -175,7 +179,9 @@ int execute_pip(char* command, char** command_history, int history_size) {
         sub_sentence[len] = '\0';
 
         printf("Sub-sentence %d: %s\n", i + 1, sub_sentence);
-        status = execute(sub_sentence, command_history, history_size);
+        if (i < pipe_num - 1) {
+            status = execute(sub_sentence, command_history, history_size, true);
+        } else status = execute(sub_sentence, command_history, history_size, false);
         free(arg_pipe[i]);
     }
 

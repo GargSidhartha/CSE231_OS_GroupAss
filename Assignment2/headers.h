@@ -7,6 +7,7 @@
 #include<readline/readline.h>
 #include<readline/history.h>
 #include<time.h>
+#include<stdbool.h>
 #define COMLEN 1000
 #define COMHISLEN 100 
 
