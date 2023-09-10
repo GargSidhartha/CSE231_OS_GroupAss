@@ -1,4 +1,5 @@
 #include "headers.h"
+
 typedef struct command_info{
     int pid;
     long start_time;
@@ -10,6 +11,7 @@ typedef struct command_info{
 
 command_info* commands[COMHISLEN];
 int com_counter = 0;
+
 
 
 
@@ -25,53 +27,58 @@ void init_shell()
     printf("\n");
     
 }
-int fd[2];
-pipe(fd);
 
-int launch(char** args, int arg_num){
-    // for (int i = 0; i < arg_num;i++){
-    //     printf("%s\n",args[i]);
-    // }
+int launch(char** args, int arg_num, bool is_pipe){
+
+    int fd[2];
+
+    if(is_pipe) pipe(fd);
 
     int start_time = clock();
     int status = fork();
     
 
-    if(status < 0){
+    if (status < 0) {
         printf("Forking failed\n");
-    }
-    else if(status == 0){
-        printf("Child process\n");
-        close(fd[0]);
+    } else if (status == 0) {
+        
+        // Redirect input and output if necessary
+        if (is_pipe) {
+            close(fd[0]);
+            dup2(fd[1], STDOUT_FILENO);
+        }
 
+        
         if (execvp(args[0], args) < 0) {
             perror("Command not found");
         }
 
         exit(1);
-    }
-    else{
+    } else {
         wait(NULL);
-        printf("Parent process\n");
         
+        if (is_pipe) {
+            close(fd[1]);
+            dup2(fd[0], STDIN_FILENO);
+        }
+    
         command_info* info = malloc(sizeof(command_info));
-        info -> pid = status;
-        info -> end_time = clock();
-        info -> start_time = start_time;
-        info -> exec_time = info -> end_time - info -> start_time;
-        info -> command = args;
-        info -> arg_count = arg_num;
+        info->pid = status;
+        info->end_time = clock();
+        info->start_time = start_time;
+        info->exec_time = info->end_time - info->start_time;
+        info->command = args;
+        info->arg_count = arg_num;
 
         commands[com_counter] = info;
+        com_counter++;
 
-        com_counter ++;
-
-        
-        
+        return status;
     }
 
     return 1;
 }
+
 void cntrl_cHandler(int signum) {
     if(signum == SIGINT) {
         printf("\n");
@@ -87,7 +94,8 @@ void cntrl_cHandler(int signum) {
         exit(1);
     }
 }
-int execute(char* command,char** command_history,int history_size){
+
+int execute(char* command,char** command_history,int history_size, bool is_pipe){
     signal(SIGINT, cntrl_cHandler);
 
     int status = 1;
@@ -109,7 +117,7 @@ int execute(char* command,char** command_history,int history_size){
 
     //list down the builtin shell commands here to add support
     if(strcmp(args[0], "exit") == 0) {
-        printf("Command_History:\n");
+        printf("\nCommand_History:\n");
         for (int i = 0; i < com_counter; i++){
             printf("%d ",commands[i] -> pid);
             for (int j = 0; j < commands[i] -> arg_count; j++){
@@ -132,10 +140,8 @@ int execute(char* command,char** command_history,int history_size){
         }
         
     }
-
-
     else{
-        status = launch(args, arg_num);
+        status = launch(args, arg_num, is_pipe);
     }
     
     return status;
@@ -167,8 +173,9 @@ int execute_pip(char* command, char** command_history, int history_size) {
         }
         sub_sentence[len] = '\0';
 
-        printf("Sub-sentence %d: %s\n", i + 1, sub_sentence);
-        status = execute(sub_sentence, command_history, history_size);
+        if (i < pipe_num - 1) {
+            status = execute(sub_sentence, command_history, history_size, true);
+        } else status = execute(sub_sentence, command_history, history_size, false);
         free(arg_pipe[i]);
     }
 
@@ -187,13 +194,23 @@ int main(){
 
     do{
         char* user = getenv("USER");
-        printf("%s:~$ > ",user);
+        
+        printf("\n%s:~$ > ",user);
+    
         char command[COMLEN];
 
+        
         if(fgets(command,COMLEN,stdin)==NULL){
+
             if (feof(stdin)) {                      // end of input reached
                 status = 1;
-                printf("End of file reached. Enter again.\n");
+                
+                
+                if (freopen("/dev/tty", "r", stdin) == NULL) {
+                    perror("freopen");
+                    exit(1);
+                }
+
             }
             else if (ferror(stdin)) {               // some other error occurred
                 status = 1;
@@ -203,14 +220,15 @@ int main(){
         }
 
         else{
-            // command history
+            
             command_history = realloc(command_history, (history_size + 1) * sizeof(char *));
             command_history[history_size] = strdup(command);
             history_size++;
             
-
-
             status = execute_pip(command,command_history,history_size);
+            lseek(STDIN_FILENO, 0, SEEK_END);
+            
+
         }
     }
     while(status);
