@@ -141,13 +141,7 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
         exit(0);
         return 0;
     }
-    // else if (strcmp(args[0],"history") == 0){
-    //     if (history_size != 0){
-    //         for (int i = 0; i < history_size;i++ ){
-    //             printf("%s",command_history[i]);
-    //         }
-    //     }
-    // }
+        
     else{
         status = launch(args, arg_num, is_pipe, history_size, command_history);
     }
@@ -191,6 +185,28 @@ int execute_pip(char* command, char** command_history, int history_size) {
     return status;
 }
 
+int shInterpreter(char* shFile, char** command_history, int history_size){
+    FILE* file = fopen(shFile, "r");
+    if (file == NULL) {
+        printf("File not found\n");
+        return 1;
+    }
+
+    char* line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    while ((read = getline(&line, &len, file)) != -1) {
+        if (line[strlen(line) - 1] == '\n') line[strlen(line) - 1] = '\0';
+        execute_pip(line, command_history, history_size);
+    }
+
+    fclose(file);
+    if (line) free(line);
+    return 1;
+
+}
+
 int main(){
     init_shell();
 
@@ -230,15 +246,18 @@ int main(){
             command_history = realloc(command_history, (history_size + 1) * sizeof(char *));
             command_history[history_size] = strdup(command);
             history_size++;
-            
-            status = execute_pip(command,command_history,history_size);
-            lseek(STDIN_FILENO, 0, SEEK_END);
-            
+
+            if(command[0]=='.' && command[1]=='/' && command[strlen(command)-1]=='h' && command[strlen(command)-2]=='s'){
+                status = shInterpreter(command, command_history, history_size);
+            }
+            else{
+                status = execute_pip(command,command_history,history_size);
+                lseek(STDIN_FILENO, 0, SEEK_END);
+            }
 
         }
     }
     while(status);
 
-    
     return 0;
 }
