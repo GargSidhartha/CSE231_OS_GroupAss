@@ -12,9 +12,6 @@ typedef struct command_info{
 command_info* commands[COMHISLEN];
 int com_counter = 0;
 
-
-
-
 void init_shell()
 {
     clear();
@@ -28,7 +25,7 @@ void init_shell()
     
 }
 
-int launch(char** args, int arg_num, bool is_pipe){
+int launch(char** args, int arg_num, bool is_pipe, int history_size, char** command_history){
 
     int fd[2];
 
@@ -41,17 +38,26 @@ int launch(char** args, int arg_num, bool is_pipe){
     if (status < 0) {
         printf("Forking failed\n");
     } else if (status == 0) {
-        
-        // Redirect input and output if necessary
-        if (is_pipe) {
-            close(fd[0]);
-            dup2(fd[1], STDOUT_FILENO);
-        }
 
-        
-        if (execvp(args[0], args) < 0) {
-            perror("Command not found");
+        if(strcmp("history", args[0]) == 0){
+            if (history_size != 0){
+                for (int i = 0; i < history_size;i++ ){
+                    printf("%s",command_history[i]);
+                }
+            }
+            
         }
+        else{
+            if (is_pipe) {
+                close(fd[0]);
+                dup2(fd[1], STDOUT_FILENO);
+            }
+
+            if (execvp(args[0], args) < 0) {
+                perror("Command not found");
+            }
+        }
+        
 
         exit(1);
     } else {
@@ -75,7 +81,6 @@ int launch(char** args, int arg_num, bool is_pipe){
 
         return status;
     }
-
     return 1;
 }
 
@@ -118,13 +123,14 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
     //list down the builtin shell commands here to add support
     if(strcmp(args[0], "exit") == 0) {
         printf("\nCommand_History:\n");
+        printf("PID\t\t Command\t\t StartTime\t ExecTime\n");
         for (int i = 0; i < com_counter; i++){
-            printf("%d ",commands[i] -> pid);
+            printf("%d \t\t",commands[i] -> pid);
             for (int j = 0; j < commands[i] -> arg_count; j++){
                 printf("%s ",commands[i] -> command[j]);
             }
-            printf("%ld ",commands[i] -> start_time);
-            printf("%ld ",commands[i] -> exec_time);
+            printf("\t\t%ld \t\t",commands[i] -> start_time);
+            printf("%ld \t",commands[i] -> exec_time);
             printf("\n");
             
         }
@@ -132,16 +138,15 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
         exit(0);
         return 0;
     }
-    else if (strcmp(args[0],"history") == 0){
-        if (history_size != 0){
-            for (int i = 0; i < history_size;i++ ){
-                printf("%s",command_history[i]);
-            }
-        }
-        
-    }
+    // else if (strcmp(args[0],"history") == 0){
+    //     if (history_size != 0){
+    //         for (int i = 0; i < history_size;i++ ){
+    //             printf("%s",command_history[i]);
+    //         }
+    //     }
+    // }
     else{
-        status = launch(args, arg_num, is_pipe);
+        status = launch(args, arg_num, is_pipe, history_size, command_history);
     }
     
     return status;
@@ -182,8 +187,6 @@ int execute_pip(char* command, char** command_history, int history_size) {
     free(arg_pipe);
     return status;
 }
-
-
 
 int main(){
     init_shell();
