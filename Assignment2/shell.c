@@ -20,6 +20,10 @@ void init_shell()
     printf("\n\n\t-SakshsamSingh\n\tSidharthaGarg-");
     printf("\n\n\n\n---------------------------------------------------");
     char* username = getenv("USER");
+    if (username == NULL) {
+        perror("getenv");
+        exit(1);
+    }
     printf("\n\n\nUSER is: @%s", username);
     printf("\n");
     
@@ -69,6 +73,12 @@ int launch(char** args, int arg_num, bool is_pipe, int history_size, char** comm
         }
     
         command_info* info = malloc(sizeof(command_info));
+        // malloc NULL error handled
+        if (info == NULL) {
+            perror("malloc");
+            exit(1);
+        }
+
         info->pid = status;
         info->end_time = clock();
         info->start_time = start_time;
@@ -114,10 +124,22 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
 
     char *token = strtok(command, " ");
     args = malloc(sizeof(char*));
+    if (args == NULL) {
+        perror("malloc");
+        exit(1);
+    }
     while (token != NULL) {
         args[arg_num] = strdup(token);
+        if (args[arg_num] == NULL) {
+            perror("strdup");
+            exit(1);
+        }
         arg_num++;
         args = realloc(args, (arg_num + 1) * sizeof(char *));
+        if (args == NULL) {
+            perror("realloc");
+            exit(1);
+        }
         token = strtok(NULL, " ");
     }
 
