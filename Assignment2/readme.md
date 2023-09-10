@@ -34,17 +34,12 @@ This C code implements a basic shell with the following features:
 
 ## Usage
 
-1. Compile the code:
+1. Compile and run the code:
 
    ```shell
-   gcc -o shellvetica shell.c
+   make run_shell
 
-2. Run the compiled file:
-
-    ```shell
-    ./shellvetica
-
-3. Welcome to the shell
+2. Welcome to the shell
    -  The shell will accept all the externally defined commands in `/usr/bin` with their appropriate flags and syntax
    -  The shell will also accept appropriate ELF executables and run them with with their said arguments
    -  The shell is also capable of running bash scripts compatible with the OS accordingly
@@ -55,6 +50,14 @@ This C code implements a basic shell with the following features:
       -  `history` : prints the list of all the commands entered
    -  The following commands are known to not work because of not being present in `/usr/bin` and being internally coded, and were not implemented in this shell for the reason of being outside the scope of this assignment
       -  `cd`
+  
+3. `fib.c` can be compiled to `./fib` by
+   ```shell
+   make fib
+  
+4. Cleanup by
+    ```shell
+    make clean
 
 
 ## Code Structure
