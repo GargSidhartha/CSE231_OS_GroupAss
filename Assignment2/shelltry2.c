@@ -1,4 +1,5 @@
 #include "headers.h"
+
 typedef struct command_info{
     int pid;
     long start_time;
@@ -10,7 +11,6 @@ typedef struct command_info{
 
 command_info* commands[COMHISLEN];
 int com_counter = 0;
-
 
 
 void init_shell()
@@ -26,14 +26,14 @@ void init_shell()
     
 }
 
-
 int launch(char** args, int arg_num, bool is_pipe){
     // for (int i = 0; i < arg_num;i++){
     //     printf("%s\n",args[i]);
     // }
 
     int fd[2];
-    pipe(fd);
+
+    if(is_pipe) pipe(fd);
 
     int start_time = clock();
     int status = fork();
@@ -65,7 +65,6 @@ int launch(char** args, int arg_num, bool is_pipe){
             dup2(fd[0], STDIN_FILENO);
         }
     
-
         command_info* info = malloc(sizeof(command_info));
         info->pid = status;
         info->end_time = clock();
@@ -77,13 +76,12 @@ int launch(char** args, int arg_num, bool is_pipe){
         commands[com_counter] = info;
         com_counter++;
 
-
-
         return status;
     }
 
     return 1;
 }
+
 void cntrl_cHandler(int signum) {
     if(signum == SIGINT) {
         printf("\n");
@@ -203,11 +201,13 @@ int main(){
         printf("%s:~$ > ",user);
         char command[COMLEN];
 
+
         if(fgets(command,COMLEN,stdin)==NULL){
+
             if (feof(stdin)) {                      // end of input reached
                 status = 1;
                 printf("End of file reached. Enter again.\n");
-                break;
+                // close(STDIN_FILENO);
             }
             else if (ferror(stdin)) {               // some other error occurred
                 status = 1;
@@ -222,9 +222,10 @@ int main(){
             command_history[history_size] = strdup(command);
             history_size++;
             
-
-
             status = execute_pip(command,command_history,history_size);
+            lseek(STDIN_FILENO, 0, SEEK_END);
+            // close(STDIN_FILENO);
+
         }
     }
     while(status);
