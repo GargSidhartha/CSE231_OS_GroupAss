@@ -12,6 +12,8 @@ typedef struct command_info{
 command_info* commands[COMHISLEN];
 int com_counter = 0;
 
+int save_in, save_out;
+
 
 void init_shell()
 {
@@ -43,6 +45,8 @@ int launch(char** args, int arg_num, bool is_pipe){
         printf("Forking failed\n");
     } else if (status == 0) {
         printf("Child process\n");
+        save_in = dup(STDIN_FILENO);
+        save_out = dup(STDOUT_FILENO);  
 
         // Redirect input and output if necessary
         if (is_pipe) {
@@ -201,13 +205,18 @@ int main(){
         printf("%s:~$ > ",user);
         char command[COMLEN];
 
-
+        
         if(fgets(command,COMLEN,stdin)==NULL){
 
             if (feof(stdin)) {                      // end of input reached
                 status = 1;
-                printf("End of file reached. Enter again.\n");
-                // close(STDIN_FILENO);
+                
+                
+                if (freopen("/dev/tty", "r", stdin) == NULL) {
+                    perror("freopen");
+                    exit(1);
+                }
+
             }
             else if (ferror(stdin)) {               // some other error occurred
                 status = 1;
