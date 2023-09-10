@@ -276,7 +276,7 @@ int shInterpreter(char* shFile, char** command_history, int history_size){
 
     while ((read = getline(&line, &len, file)) != -1) {
         if (line[strlen(line) - 1] == '\n') line[strlen(line) - 1] = '\0';
-        execute_pip(line, command_history, history_size);
+        execute_ampersand(line, command_history, history_size);
     }
 
     fclose(file);
