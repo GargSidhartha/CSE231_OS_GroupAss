@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 echo hellow worlf
 ls
 cat text.txt | grep hello | wc -l
