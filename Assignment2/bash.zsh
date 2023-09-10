@@ -1,4 +1,6 @@
 #!/bin/zsh
 echo hellow worlf
 ls
-cat try.c | grep command
+cat text.txt | grep hello | wc -l
+ls -l | grep shell
+./fib
