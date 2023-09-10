@@ -117,7 +117,40 @@ int execute(char* command,char** command_history,int history_size){
         status = launch(args, arg_num);
     }
     
+    return status;
+}
 
+int execute_pip(char* command, char** command_history, int history_size) {
+    int status = 1;
+    char** arg_pipe = NULL;
+    int pipe_num = 0;
+
+    char* token = strtok(command, "|");
+    while (token != NULL) {
+        arg_pipe = realloc(arg_pipe, (pipe_num + 1) * sizeof(char*));
+        arg_pipe[pipe_num] = strdup(token);
+        pipe_num++;
+        token = strtok(NULL, "|");
+    }
+
+    for (int i = 0; i < pipe_num; i++) {
+        char* sub_sentence = arg_pipe[i];
+        // Trim leading and trailing spaces
+        while (*sub_sentence == ' ') {
+            sub_sentence++;
+        }
+        int len = strlen(sub_sentence);
+        while (len > 0 && sub_sentence[len - 1] == ' ') {
+            len--;
+        }
+        sub_sentence[len] = '\0';
+
+        printf("Sub-sentence %d: %s\n", i + 1, sub_sentence);
+        status = execute(sub_sentence, command_history, history_size);
+        free(arg_pipe[i]);
+    }
+
+    free(arg_pipe);
     return status;
 }
 
@@ -153,11 +186,7 @@ int main(){
             
 
 
-            status = execute(command,command_history,history_size);
-
-            
-            
-
+            status = execute_pip(command,command_history,history_size);
         }
     }
     while(status);
