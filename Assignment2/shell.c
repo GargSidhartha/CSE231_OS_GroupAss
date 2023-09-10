@@ -87,14 +87,17 @@ int launch(char** args, int arg_num, bool is_pipe, int history_size, char** comm
 void cntrl_cHandler(int signum) {
     if(signum == SIGINT) {
         printf("\n");
+        printf("\nCommand_History:\n");
+        printf("PID\t\t Command\t\t StartTime\t ExecTime\n");
         for (int i = 0; i < com_counter; i++){
-            printf("%d ",commands[i] -> pid);
+            printf("%d \t\t",commands[i] -> pid);
             for (int j = 0; j < commands[i] -> arg_count; j++){
                 printf("%s ",commands[i] -> command[j]);
             }
-            printf("%ld ",commands[i] -> start_time);
-            printf("%ld ",commands[i] -> exec_time);
+            printf("\t\t%ld \t\t",commands[i] -> start_time);
+            printf("%ld \t",commands[i] -> exec_time);
             printf("\n");
+            
         }
         exit(1);
     }
