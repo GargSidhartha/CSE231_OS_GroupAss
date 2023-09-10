@@ -11,7 +11,7 @@ typedef struct command_info{
 command_info* commands[COMHISLEN];
 int com_counter = 0;
 
-
+int numpipe;
 
 void init_shell()
 {
@@ -25,53 +25,64 @@ void init_shell()
     printf("\n");
     
 }
-int fd[2];
-pipe(fd);
 
-int launch(char** args, int arg_num){
-    // for (int i = 0; i < arg_num;i++){
-    //     printf("%s\n",args[i]);
-    // }
+int launch(char** args, int arg_num,int pipenum) {
+    printf("value of pipe num: %d\n",pipenum);
+    
+    int fd[2];
+    pipe(fd);
 
     int start_time = clock();
     int status = fork();
+
     
 
-    if(status < 0){
+    if (status < 0) {
         printf("Forking failed\n");
-    }
-    else if(status == 0){
+    } else if (status == 0) {
         printf("Child process\n");
+
+        // Redirect input and output if necessary
         close(fd[0]);
+        dup2(fd[1], STDOUT_FILENO);
+            
 
         if (execvp(args[0], args) < 0) {
             perror("Command not found");
         }
 
         exit(1);
-    }
-    else{
+    } else {
         wait(NULL);
         printf("Parent process\n");
-        
+        close(fd[1]);
+        dup2(fd[0],STDIN_FILENO);
+        pipenum --;
+    
+
+        printf("value of pipe : %d\n",pipenum);
+        numpipe = pipenum;
+
         command_info* info = malloc(sizeof(command_info));
-        info -> pid = status;
-        info -> end_time = clock();
-        info -> start_time = start_time;
-        info -> exec_time = info -> end_time - info -> start_time;
-        info -> command = args;
-        info -> arg_count = arg_num;
+        info->pid = status;
+        info->end_time = clock();
+        info->start_time = start_time;
+        info->exec_time = info->end_time - info->start_time;
+        info->command = args;
+        info->arg_count = arg_num;
 
         commands[com_counter] = info;
+        com_counter++;
 
-        com_counter ++;
 
-        
-        
+
+        return status;
     }
 
-    return 1;
+    return -1;
 }
+
+
 void cntrl_cHandler(int signum) {
     if(signum == SIGINT) {
         printf("\n");
@@ -87,9 +98,9 @@ void cntrl_cHandler(int signum) {
         exit(1);
     }
 }
-int execute(char* command,char** command_history,int history_size){
+int execute(char* command,char** command_history,int history_size,int pipenum){
     signal(SIGINT, cntrl_cHandler);
-
+    numpipe = pipenum;
     int status = 1;
     
     //splitting the command
@@ -135,7 +146,8 @@ int execute(char* command,char** command_history,int history_size){
 
 
     else{
-        status = launch(args, arg_num);
+        status = launch(args, arg_num,pipenum);
+        pipenum--;
     }
     
     return status;
@@ -168,7 +180,8 @@ int execute_pip(char* command, char** command_history, int history_size) {
         sub_sentence[len] = '\0';
 
         printf("Sub-sentence %d: %s\n", i + 1, sub_sentence);
-        status = execute(sub_sentence, command_history, history_size);
+        
+        status = execute(sub_sentence, command_history, history_size,pipe_num-1);
         free(arg_pipe[i]);
     }
 
@@ -194,6 +207,7 @@ int main(){
             if (feof(stdin)) {                      // end of input reached
                 status = 1;
                 printf("End of file reached. Enter again.\n");
+                break;
             }
             else if (ferror(stdin)) {               // some other error occurred
                 status = 1;
@@ -209,7 +223,9 @@ int main(){
             history_size++;
             
 
-
+            if (numpipe < 0){
+                continue;
+            }
             status = execute_pip(command,command_history,history_size);
         }
     }

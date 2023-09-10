@@ -25,49 +25,56 @@ void init_shell()
     printf("\n");
     
 }
-int fd[2];
-pipe(fd);
+
 
 int launch(char** args, int arg_num){
     // for (int i = 0; i < arg_num;i++){
     //     printf("%s\n",args[i]);
     // }
 
+    int fd[2];
+    pipe(fd);
+
     int start_time = clock();
     int status = fork();
     
 
-    if(status < 0){
+    if (status < 0) {
         printf("Forking failed\n");
-    }
-    else if(status == 0){
+    } else if (status == 0) {
         printf("Child process\n");
+
+        // Redirect input and output if necessary
         close(fd[0]);
+        dup2(fd[1], STDOUT_FILENO);
+            
 
         if (execvp(args[0], args) < 0) {
             perror("Command not found");
         }
 
         exit(1);
-    }
-    else{
+    } else {
         wait(NULL);
         printf("Parent process\n");
-        
+        close(fd[1]);
+        dup2(fd[0],STDIN_FILENO);
+    
+
         command_info* info = malloc(sizeof(command_info));
-        info -> pid = status;
-        info -> end_time = clock();
-        info -> start_time = start_time;
-        info -> exec_time = info -> end_time - info -> start_time;
-        info -> command = args;
-        info -> arg_count = arg_num;
+        info->pid = status;
+        info->end_time = clock();
+        info->start_time = start_time;
+        info->exec_time = info->end_time - info->start_time;
+        info->command = args;
+        info->arg_count = arg_num;
 
         commands[com_counter] = info;
+        com_counter++;
 
-        com_counter ++;
 
-        
-        
+
+        return status;
     }
 
     return 1;
@@ -194,6 +201,7 @@ int main(){
             if (feof(stdin)) {                      // end of input reached
                 status = 1;
                 printf("End of file reached. Enter again.\n");
+                break;
             }
             else if (ferror(stdin)) {               // some other error occurred
                 status = 1;
