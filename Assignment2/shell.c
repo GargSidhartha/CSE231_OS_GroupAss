@@ -207,6 +207,40 @@ int execute_pip(char* command, char** command_history, int history_size) {
     return status;
 }
 
+int execute_ampersand(char* command, char** command_history, int history_size) {
+    
+    int status = 1;
+    char** arg_ampersand = NULL;
+    int ampersand_num = 0;
+
+    char* token = strtok(command, "&");
+    while (token != NULL) {
+        arg_ampersand = realloc(arg_ampersand, (ampersand_num + 1) * sizeof(char*));
+        arg_ampersand[ampersand_num] = strdup(token);
+        ampersand_num++;
+        token = strtok(NULL, "&");
+    }
+
+    for (int i = 0; i < ampersand_num; i++) {
+        char* sub_sentence = arg_ampersand[i];
+        
+        while (*sub_sentence == ' ') {
+            sub_sentence++;
+        }
+        int len = strlen(sub_sentence);
+        while (len > 0 && sub_sentence[len - 1] == ' ') {
+            len--;
+        }
+        sub_sentence[len] = '\0';
+        status = execute_pip(sub_sentence, command_history, history_size);
+        free(arg_ampersand[i]);
+    }
+
+    free(arg_ampersand);
+    return status;
+}
+
+
 int shInterpreter(char* shFile, char** command_history, int history_size){
     FILE* file = fopen(shFile, "r");
     if (file == NULL) {
@@ -273,7 +307,7 @@ int main(){
                 status = shInterpreter(command, command_history, history_size);
             }
             else{
-                status = execute_pip(command,command_history,history_size);
+                status = execute_ampersand(command,command_history,history_size);
                 lseek(STDIN_FILENO, 0, SEEK_END);
             }
 
