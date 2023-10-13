@@ -15,27 +15,118 @@
 #define COMHISLEN 100 
 
 #define clear() printf("\033[H\033[J")
+#define SIZE 10
+#define FLAG -1530494976
+
+typedef struct {
+    int *array;
+    int head;
+    int tail;
+    int isEmpty;
+    int isFull;
+} CircularQueue;
+
 
 int launch(char** args, int arg_num, bool is_pipe, int history_size, char** command_history);
 
-int execute(char* command,char** command_history,int history_size, bool is_pipe);
+int execute(CircularQueue * cq,char* command,char** command_history,int history_size, bool is_pipe);
 
-int execute_pip(char* command, char** command_history, int history_size);
+int execute_pip(CircularQueue * cq,char* command, char** command_history, int history_size);
 
-int shInterpreter(char* shFile, char** command_history, int history_size);
+int shInterpreter(CircularQueue * cq,char* shFile, char** command_history, int history_size);
 
 
 typedef struct command_info{
     int pid;
     long start_time;
     long end_time;
-    long exec_time;
+    double exec_time;
     char** command;
     int arg_count;
 }command_info;
 
+typedef struct process_info{
+    int pid;
+    bool status;
+}process_info;
+
 command_info* commands[COMHISLEN];
 int com_counter = 0;
+void initializeQueue(CircularQueue *cq, int size) {
+    cq->array = (int *)malloc(size * sizeof(int));
+    cq->head = cq->tail = cq->isEmpty = 0;
+    cq->isFull = 0;
+}
+
+void enqueue(CircularQueue *cq, int ele) {
+    if (cq->head == (cq->tail + 1) % SIZE && cq->isFull) {
+        printf("\nerror: overflow\n");
+    } else {
+        cq->array[cq->tail] = ele;
+        cq->isEmpty = 0;
+        if (cq->tail == SIZE) {
+            cq->tail = 0;
+        } else {
+            cq->tail += 1;
+        }
+        if (cq->head == cq->tail) {
+            cq->isFull = 1;
+        }
+    }
+}
+
+int dequeue(CircularQueue *cq) {
+    if (cq->head == cq->tail && cq->isEmpty == 1) {
+        printf("\nerror: underflow\n");
+        return FLAG;
+    } else {
+        int tmp = cq->array[cq->head];
+        cq->head = (cq->head + 1) % SIZE;
+        if (cq->head == cq->tail) {
+            cq->isEmpty = 1;
+        }
+        return tmp;
+    }
+}
+
+int qLength(CircularQueue *cq) {
+    if (cq->head < cq->tail) {
+        return cq->tail - cq->head;
+    } else if (cq->head > cq->tail) {
+        return SIZE - cq->head + cq->tail;
+    } else if (cq->head == cq->tail && cq->isEmpty) {
+        return 0;
+    } else if (cq->head == cq->tail && cq->isFull) {
+        return SIZE;
+    } else {
+        return FLAG;
+    }
+}
+
+int front(CircularQueue *cq) {
+    if (cq->isEmpty) {
+        printf("queue is empty, ");
+        return FLAG;
+    }
+    return cq->array[cq->head];
+}
+
+void printQueue(CircularQueue *cq) {
+    if (cq->isEmpty) {
+        printf("Queue is empty");
+    } else if (cq->isEmpty == 0 && cq->head < cq->tail) {
+        for (int i = cq->head; i < cq->tail; i++) {
+            printf("%d ", cq->array[i]);
+        }
+    } else if (cq->isEmpty == 0 && cq->head >= cq->tail) {
+        for (int i = cq->head; i < SIZE; i++) {
+            printf("%d ", cq->array[i]);
+        }
+        for (int i = 0; i < cq->tail; i++) {
+            printf("%d ", cq->array[i]);
+        }
+    }
+}
 
 void init_shell(int ncpu, int tslice){
     clear();
@@ -107,7 +198,7 @@ int launch(char** args, int arg_num, bool is_pipe, int history_size, char** comm
         info->pid = status;
         info->end_time = clock();
         info->start_time = start_time;
-        info->exec_time = info->end_time - info->start_time;
+        info->exec_time = ((double)(info->end_time - info->start_time)/(double)CLOCKS_PER_SEC) * 1000;
         info->command = args;
         info->arg_count = arg_num;
 
@@ -130,7 +221,7 @@ void cntrl_cHandler(int signum) {
                 printf("%s ",commands[i] -> command[j]);
             }
             printf("\t\t%ld \t\t",commands[i] -> start_time);
-            printf("%ld \t",commands[i] -> exec_time);
+            printf("%lf \t",commands[i] -> exec_time);
             printf("\n");
             
         }
@@ -138,7 +229,7 @@ void cntrl_cHandler(int signum) {
     }
 }
 
-int execute(char* command,char** command_history,int history_size, bool is_pipe){
+int execute(CircularQueue * cq,char* command,char** command_history,int history_size, bool is_pipe){
     signal(SIGINT, cntrl_cHandler);
 
     int status = 1;
@@ -180,7 +271,7 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
                 printf("%s ",commands[i] -> command[j]);
             }
             printf("\t\t%ld \t\t",commands[i] -> start_time);
-            printf("%ld \t",commands[i] -> exec_time);
+            printf("%lf \t",commands[i] -> exec_time);
             printf("\n");
             
         }
@@ -188,6 +279,7 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
         exit(0);
         return 0;
     }
+
         
     else{
         status = launch(args, arg_num, is_pipe, history_size, command_history);
@@ -196,7 +288,7 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
     return status;
 }
 
-int execute_pip(char* command, char** command_history, int history_size) {
+int execute_pip(CircularQueue *cq, char* command, char** command_history, int history_size) {
     
     int status = 1;
     char** arg_pipe = NULL;
@@ -232,7 +324,7 @@ int execute_pip(char* command, char** command_history, int history_size) {
     return status;
 }
 
-int execute_ampersand(char* command, char** command_history, int history_size) {
+int execute_ampersand(CircularQueue* cq,char* command, char** command_history, int history_size) {
     
     int status = 1;
     char** arg_ampersand = NULL;
@@ -257,7 +349,7 @@ int execute_ampersand(char* command, char** command_history, int history_size) {
             len--;
         }
         sub_sentence[len] = '\0';
-        status = execute_pip(sub_sentence, command_history, history_size);
+        status = execute_pip(cq, sub_sentence, command_history, history_size);
         free(arg_ampersand[i]);
     }
 
@@ -265,29 +357,32 @@ int execute_ampersand(char* command, char** command_history, int history_size) {
     return status;
 }
 
-int shInterpreter(char* shFile, char** command_history, int history_size){
-    FILE* file = fopen(shFile, "r");
-    if (file == NULL) {
-        printf("File not found\n");
-        return 1;
-    }
+// int shInterpreter(char* shFile, char** command_history, int history_size){
+//     FILE* file = fopen(shFile, "r");
+//     if (file == NULL) {
+//         printf("File not found\n");
+//         return 1;
+//     }
 
-    char* line = NULL;
-    size_t len = 0;
-    ssize_t read;
+//     char* line = NULL;
+//     size_t len = 0;
+//     ssize_t read;
 
-    while ((read = getline(&line, &len, file)) != -1) {
-        if (line[strlen(line) - 1] == '\n') line[strlen(line) - 1] = '\0';
-        execute_ampersand(line, command_history, history_size);
-    }
+//     while ((read = getline(&line, &len, file)) != -1) {
+//         if (line[strlen(line) - 1] == '\n') line[strlen(line) - 1] = '\0';
+//         execute_ampersand(line, command_history, history_size);
+//     }
 
-    fclose(file);
-    if (line) free(line);
-    return 1;
+//     fclose(file);
+//     if (line) free(line);
+//     return 1;
 
-}
+// }
 
 int main(int argc, char** argv){
+
+    CircularQueue *cq;
+    initializeQueue(cq,1000);
 
     if(argc!=3){
         printf("Invalid number of arguments\n");
@@ -340,7 +435,7 @@ int main(int argc, char** argv){
                 status = shInterpreter(command, command_history, history_size);
             }
             else{
-                status = execute_ampersand(command,command_history,history_size);
+                status = execute_ampersand(cq,command,command_history,history_size);
                 lseek(STDIN_FILENO, 0, SEEK_END);
             }
         }
