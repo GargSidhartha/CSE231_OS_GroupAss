@@ -11,6 +11,8 @@
 #include<signal.h>
 #include<semaphore.h>
 #include<sys/mman.h>
+#include <fcntl.h>
+
 #define COMLEN 1000
 #define COMHISLEN 100 
 #define JOBMAX 100
@@ -454,14 +456,21 @@ int shell(int ncpu, int tslice){
 PriorityQueues* pq;
 
 
-PriorityQueues* setup(){
-    shm_open("scheduler", O_CREAT | O_RDWR, 0666);
-    ftruncate(1, sizeof(PriorityQueues));
-    PriorityQueues* pq = mmap(NULL, sizeof(PriorityQueues), PROT_READ | PROT_WRITE, MAP_SHARED, 1, 0);
+PriorityQueues* setup() {
+    int shm_fd = shm_open("scheduler", O_CREAT | O_RDWR, 0666);
+    if (shm_fd == -1) {
+        perror("shm_open");
+        exit(1);
+    }
+
+    ftruncate(shm_fd, sizeof(PriorityQueues));
+
+    PriorityQueues* pq = mmap(NULL, sizeof(PriorityQueues), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (pq == MAP_FAILED) {
         perror("mmap");
         exit(1);
     }
+
     pq->q1.front = -1;
     pq->q1.rear = -1;
     pq->q2.front = -1;
@@ -470,6 +479,7 @@ PriorityQueues* setup(){
     pq->q3.rear = -1;
     pq->q4.front = -1;
     pq->q4.rear = -1;
+
     return pq;
 }
 
