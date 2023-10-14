@@ -38,6 +38,8 @@ typedef struct {
     process queue[JOBMAX];
     int front;
     int rear;
+    int isEmpty;
+    sem_t mutex;
 }Queue;
 
 typedef struct {
@@ -45,7 +47,6 @@ typedef struct {
     Queue q2;
     Queue q3;
     Queue q4;
-    sem_t mutex;
 }PriorityQueues;
 
 int launch(char** args, int arg_num, bool is_pipe, int history_size, char** command_history);
@@ -68,8 +69,7 @@ void cleanup_and_exit();
 command_info* commands[COMHISLEN];
 int com_counter = 0;
 
-void init_shell(int ncpu, int tslice)
-{
+void init_shell(int ncpu, int tslice){
     clear();
     printf("\n\n\n\n---------------------------------------------------");
     printf("\n\n\n\t**** ShellVetica ****");
@@ -152,68 +152,125 @@ int launch(char** args, int arg_num, bool is_pipe, int history_size, char** comm
 }
 
 int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char** command_history){
+    int start_time = clock();
+    int status = fork();
     
-        int start_time = clock();
-        int status = fork();
-        
-    
-        if (status < 0) {
-            printf("Forking failed\n");
-        } else if (status == 0) {
-            if (arg_num == 2){
-                if (execvp(args[1], args) < 0) {
-                    perror("Command not found");
-                    // priority queue 1
+    if (status < 0) {
+        printf("Forking failed\n");
+    } else if (status == 0) {
+        if (arg_num == 2){
+            sem_wait(&(priorityQueues->q1.mutex));
+                if (priorityQueues->q1.front == -1) {
+                    priorityQueues->q1.front = 0;
                 }
-            }
-            else if(arg_num == 3){
-                int priority = atoi(args[2]);
-                if (priority == 1){
-                    if (execvp(args[1], args) < 0) {
-                        perror("Command not found");
-                        // priority queue 1
-                    }
-                }
-                else if(priority == 2){
-                    if (execvp(args[1], args) < 0) {
-                        perror("Command not found");
-                        // priority queue 2
-                    }
-                }
-                else if(priority == 3){
-                    if (execvp(args[1], args) < 0) {
-                        perror("Command not found");
-                        // priority queue 3
-                    }
-                }
-                else{
-                    printf("Invalid priority\n");
-                }
-            }
-            exit(1);
-        } else {
-            wait(NULL);
+                priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
+                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
+                priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
+                priorityQueues->q1.isEmpty = 0;
+                sem_post(&(priorityQueues->q1.mutex));
 
-            command_info* info = malloc(sizeof(command_info));
-            // malloc NULL error handled
-            if (info == NULL) {
-                perror("malloc");
-                exit(1);
+            if (execvp(args[1], NULL) < 0) {
+                perror("Command not found");
+                // priority queue 1
             }
-    
-            info->pid = status;
-            info->end_time = clock();
-            info->start_time = start_time;
-            info->exec_time = info->end_time - info->start_time;
-            info->command = args;
-            info->arg_count = arg_num;
-    
-            commands[com_counter] = info;
-            com_counter++;
-    
-            return status;
         }
-        return 1;
+        else if(arg_num == 3){
+            int priority = atoi(args[2]);
+            if (priority == 1){
+                // add to priority queue 1 in shared memory
+                sem_wait(&(priorityQueues->q1.mutex));
+                if (priorityQueues->q1.front == -1) {
+                    priorityQueues->q1.front = 0;
+                }
+                priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
+                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
+                priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
+                priorityQueues->q1.isEmpty = 0;
+                sem_post(&(priorityQueues->q1.mutex));
+
+                if (execvp(args[1], NULL) < 0) {
+                    perror("Command not found");
+                }
+            }
+            else if(priority == 2){
+                // add to priority queue 2 in shared memory
+                sem_wait(&(priorityQueues->q2.mutex));
+                if (priorityQueues->q2.front == -1) {
+                    priorityQueues->q2.front = 0;
+                }
+                priorityQueues->q2.rear = (priorityQueues->q2.rear + 1) % JOBMAX;
+                priorityQueues->q2.queue[priorityQueues->q2.rear].pid = status;
+                priorityQueues->q2.queue[priorityQueues->q2.rear].state = 0;
+                priorityQueues->q2.isEmpty = 0;
+                sem_post(&(priorityQueues->q2.mutex));
+
+                if (execvp(args[1], NULL) < 0) {
+                    perror("Command not found");
+                    // priority queue 2
+                }
+            }
+            else if(priority == 3){
+                // add to priority queue 3 in shared memory
+                sem_wait(&(priorityQueues->q3.mutex));
+                if (priorityQueues->q3.front == -1) {
+                    priorityQueues->q3.front = 0;
+                }
+                priorityQueues->q3.rear = (priorityQueues->q3.rear + 1) % JOBMAX;
+                priorityQueues->q3.queue[priorityQueues->q3.rear].pid = status;
+                priorityQueues->q3.queue[priorityQueues->q3.rear].state = 0;
+                priorityQueues->q3.isEmpty = 0;
+                sem_post(&(priorityQueues->q3.mutex));
+
+                if (execvp(args[1], NULL) < 0) {
+                    perror("Command not found");
+                    // priority queue 3
+                }
+            }
+            else if(priority == 4){
+                // add to priority queue 4 in shared memory
+                sem_wait(&(priorityQueues->q4.mutex));
+                if (priorityQueues->q4.front == -1) {
+                    priorityQueues->q4.front = 0;
+                }
+                priorityQueues->q4.rear = (priorityQueues->q4.rear + 1) % JOBMAX;
+                priorityQueues->q4.queue[priorityQueues->q4.rear].pid = status;
+                priorityQueues->q4.queue[priorityQueues->q4.rear].state = 0;
+                priorityQueues->q4.isEmpty = 0;
+                sem_post(&(priorityQueues->q4.mutex));
+
+                if (execvp(args[1], NULL) < 0) {
+                    perror("Command not found");
+                    // priority queue 4
+                }
+            }
+            else{
+                printf("Invalid priority\n");
+            }
+        }
+        exit(1);
+    } else {
+        wait(NULL);
+
+        command_info* info = malloc(sizeof(command_info));
+        // malloc NULL error handled
+        if (info == NULL) {
+            perror("malloc");
+            exit(1);
+        }
+
+        info->pid = status;
+        info->end_time = clock();
+        info->start_time = start_time;
+        info->exec_time = info->end_time - info->start_time;
+        info->command = args;
+        info->arg_count = arg_num;
+
+        commands[com_counter] = info;
+        com_counter++;
+
+        return status;
+    }
+    return 1;
 }
 
 void cntrl_cHandler(int signum) {
@@ -453,7 +510,7 @@ int shell(int ncpu, int tslice){
 
 
 
-PriorityQueues* pq;
+PriorityQueues* priorityQueues;
 
 
 PriorityQueues* setup() {
@@ -480,21 +537,29 @@ PriorityQueues* setup() {
     pq->q4.front = -1;
     pq->q4.rear = -1;
 
+    sem_init(&(pq->q1.mutex), 1, 1);
+    sem_init(&(pq->q2.mutex), 1, 1);
+    sem_init(&(pq->q3.mutex), 1, 1);
+    sem_init(&(pq->q4.mutex), 1, 1);
+
     return pq;
 }
 
 void cleanup(){
-    munmap(pq, sizeof(PriorityQueues));
+    munmap(priorityQueues, sizeof(PriorityQueues));
     close(1);
     shm_unlink("scheduler");
+    sem_destroy(&(priorityQueues->q1.mutex));
+    sem_destroy(&(priorityQueues->q2.mutex));
+    sem_destroy(&(priorityQueues->q3.mutex));
+    sem_destroy(&(priorityQueues->q4.mutex));
 }
 
 void cleanup_and_exit(){
-    munmap(pq, sizeof(PriorityQueues));
+    munmap(priorityQueues, sizeof(PriorityQueues));
     close(1);
     exit(0);
 }
-
 
 int scheduler(){
     while(1){
@@ -514,12 +579,7 @@ int main(int argc, char** argv){
     int ncpu = atoi(argv[1]);
     int tslice = atoi(argv[2]);
 
-
-    PriorityQueues* priorityQueues = setup();
-    sem_init(&(priorityQueues->mutex), 1, 1);
-
-
-
+    priorityQueues = setup();
     
     int status;
     pid_t schedule = fork();
