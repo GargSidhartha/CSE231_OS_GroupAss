@@ -162,18 +162,27 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
     } else if (status == 0) {
         if (arg_num == 2){
             sem_wait(&(priorityQueues->q1.mutex));
-                if (priorityQueues->q1.front == -1) {
-                    priorityQueues->q1.front = 0;
+            if (priorityQueues->q1.front == -1) {
+                priorityQueues->q1.front = 0;
+            }
+            priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
+            priorityQueues->q1.queue[priorityQueues->q1.rear].pid = getpid();
+            priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
+            priorityQueues->q1.isEmpty = 0;
+            sem_post(&(priorityQueues->q1.mutex));
+
+            //print pid
+            printf("%d\n",getpid());
+
+            //print q1
+            for (int i = 0; i < JOBMAX; i++){
+                if (priorityQueues->q1.queue[i].pid != 0){
+                    printf("%d ",priorityQueues->q1.queue[i].pid);
                 }
-                priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
-                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
-                priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
-                priorityQueues->q1.isEmpty = 0;
-                sem_post(&(priorityQueues->q1.mutex));
+            }
+
             //child process suspended
-            int kill_result = kill(getpid(), SIGSTOP);;
-            
-            
+            int kill_result = kill(getpid(), SIGSTOP);
             
             if(kill_result == 0){
                 if (execvp(args[1], NULL) < 0) {
@@ -194,7 +203,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q1.front = 0;
                 }
                 priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
-                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
+                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = getpid();
                 priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
                 priorityQueues->q1.isEmpty = 0;
                 sem_post(&(priorityQueues->q1.mutex));
@@ -210,7 +219,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q2.front = 0;
                 }
                 priorityQueues->q2.rear = (priorityQueues->q2.rear + 1) % JOBMAX;
-                priorityQueues->q2.queue[priorityQueues->q2.rear].pid = status;
+                priorityQueues->q2.queue[priorityQueues->q2.rear].pid = getpid();
                 priorityQueues->q2.queue[priorityQueues->q2.rear].state = 0;
                 priorityQueues->q2.isEmpty = 0;
                 sem_post(&(priorityQueues->q2.mutex));
@@ -227,7 +236,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q3.front = 0;
                 }
                 priorityQueues->q3.rear = (priorityQueues->q3.rear + 1) % JOBMAX;
-                priorityQueues->q3.queue[priorityQueues->q3.rear].pid = status;
+                priorityQueues->q3.queue[priorityQueues->q3.rear].pid = getpid();
                 priorityQueues->q3.queue[priorityQueues->q3.rear].state = 0;
                 priorityQueues->q3.isEmpty = 0;
                 sem_post(&(priorityQueues->q3.mutex));
@@ -244,7 +253,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q4.front = 0;
                 }
                 priorityQueues->q4.rear = (priorityQueues->q4.rear + 1) % JOBMAX;
-                priorityQueues->q4.queue[priorityQueues->q4.rear].pid = status;
+                priorityQueues->q4.queue[priorityQueues->q4.rear].pid = getpid();
                 priorityQueues->q4.queue[priorityQueues->q4.rear].state = 0;
                 priorityQueues->q4.isEmpty = 0;
                 sem_post(&(priorityQueues->q4.mutex));
@@ -546,6 +555,11 @@ PriorityQueues* setup() {
     pq->q3.rear = -1;
     pq->q4.front = -1;
     pq->q4.rear = -1;
+
+    pq->q1.isEmpty = 1;
+    pq->q2.isEmpty = 1;
+    pq->q3.isEmpty = 1;
+    pq->q4.isEmpty = 1;
 
     sem_init(&(pq->q1.mutex), 1, 1);
     sem_init(&(pq->q2.mutex), 1, 1);
