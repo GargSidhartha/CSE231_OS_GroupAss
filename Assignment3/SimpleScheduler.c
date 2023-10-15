@@ -625,8 +625,8 @@ void cleanup_and_exit(){
 }
 
 int scheduler(int ncpu, int tslice){
-
-    while(priorityQueues -> q1.isEmpty == 0 || priorityQueues -> q2.isEmpty == 0 || priorityQueues -> q3.isEmpty == 0 || priorityQueues -> q4.isEmpty == 0) {
+    while(1){
+        while(priorityQueues -> q1.isEmpty == 0 || priorityQueues -> q2.isEmpty == 0 || priorityQueues -> q3.isEmpty == 0 || priorityQueues -> q4.isEmpty == 0) {
 
         //implement round robin on each queue seperately
         for(int i = 0; i < ncpu; i++){
@@ -646,7 +646,7 @@ int scheduler(int ncpu, int tslice){
                     perror("kill");
                     exit(1);
                 }
-                usleep(tslice);
+                usleep(tslice*1000);
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -674,7 +674,7 @@ int scheduler(int ncpu, int tslice){
                     perror("kill");
                     exit(1);
                 }
-                usleep(tslice);
+                usleep(tslice*1000);
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -702,7 +702,7 @@ int scheduler(int ncpu, int tslice){
                     perror("kill");
                     exit(1);
                 }
-                usleep(tslice);
+                usleep(tslice*1000);
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -730,7 +730,7 @@ int scheduler(int ncpu, int tslice){
                     perror("kill");
                     exit(1);
                 }
-                usleep(tslice);
+                usleep(tslice*1000);
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -749,6 +749,8 @@ int scheduler(int ncpu, int tslice){
         }
     }
     
+
+    }
 
     return 0;
 }
