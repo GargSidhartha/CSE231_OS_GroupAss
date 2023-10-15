@@ -170,10 +170,19 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
                 priorityQueues->q1.isEmpty = 0;
                 sem_post(&(priorityQueues->q1.mutex));
-
-            if (execvp(args[1], NULL) < 0) {
+            //child process suspended
+            int kill_result = kill(getpid(), SIGSTOP);;
+            
+            
+            
+            if(kill_result == 0){
+                if (execvp(args[1], NULL) < 0) {
                 perror("Command not found");
                 // priority queue 1
+                }
+            }
+            else{
+                perror("SIGSTOP not implemented");
             }
         }
         else if(arg_num == 3){
