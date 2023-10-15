@@ -633,6 +633,91 @@ int scheduler(int ncpu, int tslice){
             
 
             //if queue 1 is not empty
+
+            if(priorityQueues -> q4.isEmpty == 0){
+                sem_wait(&(priorityQueues->q4.mutex));
+                process p = dequeue(&(priorityQueues->q4));
+                sem_post(&(priorityQueues->q4.mutex));
+
+                //sigcont the process
+                p.state = 1;
+                int kill_result = kill(p.pid, SIGCONT);
+                if (kill_result == -1) {
+                    perror("kill");
+                    exit(1);
+                }
+                usleep(tslice);
+                //sigstop the process
+                kill_result = kill(p.pid, SIGSTOP);
+                if (kill_result == -1) {
+                    perror("kill");
+                    exit(1);
+                }
+                p.state = 0;
+
+                //enqueue the process at the end of the queue
+                sem_wait(&(priorityQueues->q4.mutex));
+                enqueue(&(priorityQueues->q4), p);
+                sem_post(&(priorityQueues->q4.mutex));
+                continue;
+            }
+        
+            if(priorityQueues -> q3.isEmpty == 0){
+                sem_wait(&(priorityQueues->q3.mutex));
+                process p = dequeue(&(priorityQueues->q3));
+                sem_post(&(priorityQueues->q3.mutex));
+
+                //sigcont the process
+                p.state = 1;
+                int kill_result = kill(p.pid, SIGCONT);
+                if (kill_result == -1) {
+                    perror("kill");
+                    exit(1);
+                }
+                usleep(tslice);
+                //sigstop the process
+                kill_result = kill(p.pid, SIGSTOP);
+                if (kill_result == -1) {
+                    perror("kill");
+                    exit(1);
+                }
+                p.state = 0;
+
+                //enqueue the process at the end of the queue
+                sem_wait(&(priorityQueues->q3.mutex));
+                enqueue(&(priorityQueues->q3), p);
+                sem_post(&(priorityQueues->q3.mutex));
+                continue;
+            }
+
+            if(priorityQueues -> q2.isEmpty == 0){
+                sem_wait(&(priorityQueues->q2.mutex));
+                process p = dequeue(&(priorityQueues->q2));
+                sem_post(&(priorityQueues->q2.mutex));
+
+                //sigcont the process
+                p.state = 1;
+                int kill_result = kill(p.pid, SIGCONT);
+                if (kill_result == -1) {
+                    perror("kill");
+                    exit(1);
+                }
+                usleep(tslice);
+                //sigstop the process
+                kill_result = kill(p.pid, SIGSTOP);
+                if (kill_result == -1) {
+                    perror("kill");
+                    exit(1);
+                }
+                p.state = 0;
+
+                //enqueue the process at the end of the queue
+                sem_wait(&(priorityQueues->q2.mutex));
+                enqueue(&(priorityQueues->q2), p);
+                sem_post(&(priorityQueues->q2.mutex));
+                continue;
+            }
+
             if(priorityQueues -> q1.isEmpty == 0){
                 sem_wait(&(priorityQueues->q1.mutex));
                 process p = dequeue(&(priorityQueues->q1));
@@ -658,89 +743,9 @@ int scheduler(int ncpu, int tslice){
                 sem_wait(&(priorityQueues->q1.mutex));
                 enqueue(&(priorityQueues->q1), p);
                 sem_post(&(priorityQueues->q1.mutex));  
-
+                continue;
             } 
 
-            else if(priorityQueues -> q2.isEmpty == 0){
-                sem_wait(&(priorityQueues->q2.mutex));
-                process p = dequeue(&(priorityQueues->q2));
-                sem_post(&(priorityQueues->q2.mutex));
-
-                //sigcont the process
-                p.state = 1;
-                int kill_result = kill(p.pid, SIGCONT);
-                if (kill_result == -1) {
-                    perror("kill");
-                    exit(1);
-                }
-                usleep(tslice);
-                //sigstop the process
-                kill_result = kill(p.pid, SIGSTOP);
-                if (kill_result == -1) {
-                    perror("kill");
-                    exit(1);
-                }
-                p.state = 0;
-
-                //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q2.mutex));
-                enqueue(&(priorityQueues->q2), p);
-                sem_post(&(priorityQueues->q2.mutex));
-            }
-
-            else if(priorityQueues -> q3.isEmpty == 0){
-                sem_wait(&(priorityQueues->q3.mutex));
-                process p = dequeue(&(priorityQueues->q3));
-                sem_post(&(priorityQueues->q3.mutex));
-
-                //sigcont the process
-                p.state = 1;
-                int kill_result = kill(p.pid, SIGCONT);
-                if (kill_result == -1) {
-                    perror("kill");
-                    exit(1);
-                }
-                usleep(tslice);
-                //sigstop the process
-                kill_result = kill(p.pid, SIGSTOP);
-                if (kill_result == -1) {
-                    perror("kill");
-                    exit(1);
-                }
-                p.state = 0;
-
-                //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q3.mutex));
-                enqueue(&(priorityQueues->q3), p);
-                sem_post(&(priorityQueues->q3.mutex));
-            }
-
-            else if(priorityQueues -> q4.isEmpty == 0){
-                sem_wait(&(priorityQueues->q4.mutex));
-                process p = dequeue(&(priorityQueues->q4));
-                sem_post(&(priorityQueues->q4.mutex));
-
-                //sigcont the process
-                p.state = 1;
-                int kill_result = kill(p.pid, SIGCONT);
-                if (kill_result == -1) {
-                    perror("kill");
-                    exit(1);
-                }
-                usleep(tslice);
-                //sigstop the process
-                kill_result = kill(p.pid, SIGSTOP);
-                if (kill_result == -1) {
-                    perror("kill");
-                    exit(1);
-                }
-                p.state = 0;
-
-                //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q4.mutex));
-                enqueue(&(priorityQueues->q4), p);
-                sem_post(&(priorityQueues->q4.mutex));
-            }
         }
     }
     
