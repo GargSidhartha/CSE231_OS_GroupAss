@@ -20,6 +20,8 @@
 #define clear() printf("\033[H\033[J")
 
 int shm_fd;
+// int ans = 0;
+// volatile sig_atomic_t flag = 0;
 
 
 typedef struct command_info{
@@ -218,11 +220,11 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 sem_post(&(priorityQueues->q2.mutex));
                 
                 // //print q1
-                // for (int i = 0; i < JOBMAX; i++){
-                //     if (priorityQueues->q2.queue[i].pid != 0){
-                //         printf("%d ",priorityQueues->q2.queue[i].pid);
-                //     }
-                // }
+                for (int i = 0; i < JOBMAX; i++){
+                    if (priorityQueues->q2.queue[i].pid != 0){
+                        printf("%d ",priorityQueues->q2.queue[i].pid);
+                    }
+                }
 
             }
             else if(priority == 3){
@@ -280,7 +282,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
     return 1;
 }
 
-void cntrl_cHandler(int signum) {
+void signal_Handler(int signum) {
     if(signum == SIGINT) {
         printf("\n");
         printf("\nCommand_History:\n");
@@ -298,10 +300,14 @@ void cntrl_cHandler(int signum) {
         cleanup_and_exit();
         exit(1);
     }
+    // if (signum == SIGQUIT) {
+    //     flag = 1;
+    // }
+    
 }
 
 int execute(char* command,char** command_history,int history_size, bool is_pipe){
-    signal(SIGINT, cntrl_cHandler);
+    signal(SIGINT, signal_Handler);
 
     int status = 1;
     
@@ -461,8 +467,14 @@ int shell(int ncpu, int tslice){
     int status;
     char** command_history = NULL;
     int history_size = 0;
+    
 
     do{
+        // signal(SIGQUIT, signal_Handler);
+        // if (flag == 1){
+        //     break;
+        // }
+        // printf("%d",ans);
         char* user = getenv("USER");
         
         printf("\n%s@shellvetica:~$ > ",user);
@@ -504,6 +516,12 @@ int shell(int ncpu, int tslice){
             }
 
         }
+        // printf("DO YOU WANT TO START SCHEDULER?\n");
+        // scanf("%d",&ans);
+        // if (ans == 1){
+        //     break;
+        // }
+
     }
     while(status);
 
@@ -583,14 +601,12 @@ void cleanup_and_exit(){
     exit(0);
 }
 
-int scheduler(){
-    while(1){
-
-        // priority queue 1
-        // sem_wait(&(priorityQueues->q1.mutex));
-
-        sleep(1);
+int scheduler(int ncpu, int tslice){
+    // signal(SIGQUIT, signal_Handler);
+    while(priorityQueues -> q1.isEmpty == 1 || priorityQueues -> q2.isEmpty == 1 || priorityQueues -> q3.isEmpty == 1 || priorityQueues -> q4.isEmpty == 1) {
+        
     }
+    
 
     return 0;
 }
@@ -612,7 +628,7 @@ int main(int argc, char** argv){
         printf("Forking failed\n");
     }
     else if(schedule == 0){
-        scheduler();
+        scheduler(ncpu,tslice);
     }
     else{
         shell(ncpu, tslice);
