@@ -19,6 +19,8 @@
 
 #define clear() printf("\033[H\033[J")
 
+int shm_fd;
+
 
 typedef struct command_info{
     int pid;
@@ -161,7 +163,11 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
         printf("Forking failed\n");
     } else if (status == 0) {
         if (arg_num == 2){
+            
+            
             sem_wait(&(priorityQueues->q1.mutex));
+            printf("child process suspended");
+            
             if (priorityQueues->q1.front == -1) {
                 priorityQueues->q1.front = 0;
             }
@@ -171,18 +177,13 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
             priorityQueues->q1.isEmpty = 0;
             sem_post(&(priorityQueues->q1.mutex));
 
-            //print pid
-            printf("%d\n",getpid());
-
-            //print q1
-            for (int i = 0; i < JOBMAX; i++){
-                if (priorityQueues->q1.queue[i].pid != 0){
-                    printf("%d ",priorityQueues->q1.queue[i].pid);
-                }
-            }
-
+            
+            
             //child process suspended
+            
             int kill_result = kill(getpid(), SIGSTOP);
+
+            
             
             if(kill_result == 0){
                 if (execvp(args[1], NULL) < 0) {
@@ -202,11 +203,25 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 if (priorityQueues->q1.front == -1) {
                     priorityQueues->q1.front = 0;
                 }
+                printf("checking\n");
                 priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
                 priorityQueues->q1.queue[priorityQueues->q1.rear].pid = getpid();
                 priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
                 priorityQueues->q1.isEmpty = 0;
+
+            
+                printf("jobhi : %d ",priorityQueues->q1.queue[0].pid);
                 sem_post(&(priorityQueues->q1.mutex));
+                printf("jobhi : %d ",priorityQueues->q1.queue[0].pid);
+                printf("jobhi %d ",status);
+                
+    
+
+                //print q1
+                
+                
+
+                
 
                 if (execvp(args[1], NULL) < 0) {
                     perror("Command not found");
@@ -214,7 +229,9 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
             }
             else if(priority == 2){
                 // add to priority queue 2 in shared memory
-                sem_wait(&(priorityQueues->q2.mutex));
+                if (sem_wait(&(priorityQueues->q2.mutex)) != 0){
+                    perror("sem_wait");
+                }
                 if (priorityQueues->q2.front == -1) {
                     priorityQueues->q2.front = 0;
                 }
@@ -223,6 +240,15 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 priorityQueues->q2.queue[priorityQueues->q2.rear].state = 0;
                 priorityQueues->q2.isEmpty = 0;
                 sem_post(&(priorityQueues->q2.mutex));
+                //print pid
+                printf("%d\n",getpid());
+
+                //print q1
+                for (int i = 0; i < JOBMAX; i++){
+                    if (priorityQueues->q2.queue[i].pid != 0){
+                        printf("%d ",priorityQueues->q2.queue[i].pid);
+                    }
+                }
 
                 if (execvp(args[1], NULL) < 0) {
                     perror("Command not found");
@@ -269,7 +295,10 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
         }
         exit(1);
     } else {
-        wait(NULL);
+        waitpid(status,0);
+        printf("hi");
+        kill(status,SIGCONT);
+        
 
         command_info* info = malloc(sizeof(command_info));
         // malloc NULL error handled
@@ -533,7 +562,7 @@ int shell(int ncpu, int tslice){
 
 
 PriorityQueues* setup() {
-    int shm_fd = shm_open("scheduler", O_CREAT | O_RDWR, 0666);
+    shm_fd = shm_open("scheduler", O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1) {
         perror("shm_open");
         exit(1);
@@ -561,6 +590,17 @@ PriorityQueues* setup() {
     pq->q3.isEmpty = 1;
     pq->q4.isEmpty = 1;
 
+    for(int i = 0; i < JOBMAX; i++){
+        pq->q1.queue[i].pid = 0;
+        pq->q1.queue[i].state = 0;
+        pq->q2.queue[i].pid = 0;
+        pq->q2.queue[i].state = 0;
+        pq->q3.queue[i].pid = 0;
+        pq->q3.queue[i].state = 0;
+        pq->q4.queue[i].pid = 0;
+        pq->q4.queue[i].state = 0;
+    }
+
     sem_init(&(pq->q1.mutex), 1, 1);
     sem_init(&(pq->q2.mutex), 1, 1);
     sem_init(&(pq->q3.mutex), 1, 1);
@@ -571,7 +611,7 @@ PriorityQueues* setup() {
 
 void cleanup(){
     munmap(priorityQueues, sizeof(PriorityQueues));
-    close(1);
+    close(shm_fd);
     shm_unlink("scheduler");
     sem_destroy(&(priorityQueues->q1.mutex));
     sem_destroy(&(priorityQueues->q2.mutex));
@@ -581,7 +621,7 @@ void cleanup(){
 
 void cleanup_and_exit(){
     munmap(priorityQueues, sizeof(PriorityQueues));
-    close(1);
+    close(shm_fd);
     exit(0);
 }
 
@@ -589,7 +629,7 @@ int scheduler(){
     while(1){
 
         // priority queue 1
-        sem_wait(&(priorityQueues->q1.mutex));
+        // sem_wait(&(priorityQueues->q1.mutex));
 
         sleep(1);
     }
