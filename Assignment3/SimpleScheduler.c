@@ -49,6 +49,8 @@ typedef struct {
     Queue q4;
 }PriorityQueues;
 
+PriorityQueues* priorityQueues;
+
 int launch(char** args, int arg_num, bool is_pipe, int history_size, char** command_history);
 
 int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char** command_history);
@@ -510,7 +512,6 @@ int shell(int ncpu, int tslice){
 
 
 
-PriorityQueues* priorityQueues;
 
 
 PriorityQueues* setup() {
@@ -563,7 +564,10 @@ void cleanup_and_exit(){
 
 int scheduler(){
     while(1){
-        // printf("Scheduler\n");
+
+        // priority queue 1
+        sem_wait(&(priorityQueues->q1.mutex));
+
         sleep(1);
     }
 
