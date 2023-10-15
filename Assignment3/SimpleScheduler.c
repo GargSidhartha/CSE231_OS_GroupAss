@@ -162,38 +162,31 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
     if (status < 0) {
         printf("Forking failed\n");
     } else if (status == 0) {
+        if (execvp(args[1], NULL) < 0) {
+                    perror("Command not found");
+                    
+            }
+    } else {
+        // waitpid(status,NULL,0);
+        int kill_result = kill(status, SIGSTOP);
+
+        printf("hi\n");
+        printf("jobhi : %d\n ",priorityQueues->q1.queue[0].pid);
+        printf("jobhi %d ",status);
         if (arg_num == 2){
             
             
             sem_wait(&(priorityQueues->q1.mutex));
-            printf("child process suspended");
             
             if (priorityQueues->q1.front == -1) {
                 priorityQueues->q1.front = 0;
             }
             priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
-            priorityQueues->q1.queue[priorityQueues->q1.rear].pid = getpid();
+            priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
             priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
             priorityQueues->q1.isEmpty = 0;
             sem_post(&(priorityQueues->q1.mutex));
 
-            
-            
-            //child process suspended
-            
-            int kill_result = kill(getpid(), SIGSTOP);
-
-            
-            
-            if(kill_result == 0){
-                if (execvp(args[1], NULL) < 0) {
-                perror("Command not found");
-                // priority queue 1
-                }
-            }
-            else{
-                perror("SIGSTOP not implemented");
-            }
         }
         else if(arg_num == 3){
             int priority = atoi(args[2]);
@@ -205,27 +198,10 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 }
                 printf("checking\n");
                 priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
-                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = getpid();
+                priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
                 priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
                 priorityQueues->q1.isEmpty = 0;
-
-            
-                printf("jobhi : %d ",priorityQueues->q1.queue[0].pid);
                 sem_post(&(priorityQueues->q1.mutex));
-                printf("jobhi : %d ",priorityQueues->q1.queue[0].pid);
-                printf("jobhi %d ",status);
-                
-    
-
-                //print q1
-                
-                
-
-                
-
-                if (execvp(args[1], NULL) < 0) {
-                    perror("Command not found");
-                }
             }
             else if(priority == 2){
                 // add to priority queue 2 in shared memory
@@ -236,24 +212,18 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q2.front = 0;
                 }
                 priorityQueues->q2.rear = (priorityQueues->q2.rear + 1) % JOBMAX;
-                priorityQueues->q2.queue[priorityQueues->q2.rear].pid = getpid();
+                priorityQueues->q2.queue[priorityQueues->q2.rear].pid = status;
                 priorityQueues->q2.queue[priorityQueues->q2.rear].state = 0;
                 priorityQueues->q2.isEmpty = 0;
                 sem_post(&(priorityQueues->q2.mutex));
-                //print pid
-                printf("%d\n",getpid());
+                
+                // //print q1
+                // for (int i = 0; i < JOBMAX; i++){
+                //     if (priorityQueues->q2.queue[i].pid != 0){
+                //         printf("%d ",priorityQueues->q2.queue[i].pid);
+                //     }
+                // }
 
-                //print q1
-                for (int i = 0; i < JOBMAX; i++){
-                    if (priorityQueues->q2.queue[i].pid != 0){
-                        printf("%d ",priorityQueues->q2.queue[i].pid);
-                    }
-                }
-
-                if (execvp(args[1], NULL) < 0) {
-                    perror("Command not found");
-                    // priority queue 2
-                }
             }
             else if(priority == 3){
                 // add to priority queue 3 in shared memory
@@ -262,15 +232,12 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q3.front = 0;
                 }
                 priorityQueues->q3.rear = (priorityQueues->q3.rear + 1) % JOBMAX;
-                priorityQueues->q3.queue[priorityQueues->q3.rear].pid = getpid();
+                priorityQueues->q3.queue[priorityQueues->q3.rear].pid = status;
                 priorityQueues->q3.queue[priorityQueues->q3.rear].state = 0;
                 priorityQueues->q3.isEmpty = 0;
                 sem_post(&(priorityQueues->q3.mutex));
 
-                if (execvp(args[1], NULL) < 0) {
-                    perror("Command not found");
-                    // priority queue 3
-                }
+                
             }
             else if(priority == 4){
                 // add to priority queue 4 in shared memory
@@ -279,27 +246,18 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                     priorityQueues->q4.front = 0;
                 }
                 priorityQueues->q4.rear = (priorityQueues->q4.rear + 1) % JOBMAX;
-                priorityQueues->q4.queue[priorityQueues->q4.rear].pid = getpid();
+                priorityQueues->q4.queue[priorityQueues->q4.rear].pid = status;
                 priorityQueues->q4.queue[priorityQueues->q4.rear].state = 0;
                 priorityQueues->q4.isEmpty = 0;
                 sem_post(&(priorityQueues->q4.mutex));
 
-                if (execvp(args[1], NULL) < 0) {
-                    perror("Command not found");
-                    // priority queue 4
-                }
+                
             }
             else{
                 printf("Invalid priority\n");
             }
         }
-        exit(1);
-    } else {
-        waitpid(status,0);
-        printf("hi");
-        kill(status,SIGCONT);
         
-
         command_info* info = malloc(sizeof(command_info));
         // malloc NULL error handled
         if (info == NULL) {
