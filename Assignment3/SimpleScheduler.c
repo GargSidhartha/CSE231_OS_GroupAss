@@ -20,6 +20,8 @@
 #define clear() printf("\033[H\033[J")
 
 int shm_fd;
+int flag = 1;
+int flag_process = 0;
 // int ans = 0;
 // volatile sig_atomic_t flag = 0;
 
@@ -323,10 +325,22 @@ void signal_Handler(int signum) {
         cleanup_and_exit();
         exit(1);
     }
-    // if (signum == SIGQUIT) {
-    //     flag = 1;
-    // }
+
     
+}
+
+void sigchld_handler(int signo) {
+    if (flag) {
+        flag_process = 1;
+        printf("SIGCHLD received - Child process terminated\n");
+        // Handle termination logic here
+    }
+}
+
+void sigstop_handler(int signo) {
+    // Toggle the flag when SIGSTOP is received
+    flag = !flag;
+    printf("SIGSTOP received - Toggle flag to %d\n", flag);
 }
 
 int execute(char* command,char** command_history,int history_size, bool is_pipe){
@@ -647,6 +661,11 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+                signal(SIGCHLD,sigchld_handler);
+                if (flag_process == 1){
+                    flag_process = 0;
+                    break;
+                } 
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
