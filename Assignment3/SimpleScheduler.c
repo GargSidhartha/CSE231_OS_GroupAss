@@ -20,6 +20,7 @@
 #define clear() printf("\033[H\033[J")
 
 int shm_fd;
+int com_fd;
 // int ans = 0;
 // volatile sig_atomic_t flag = 0;
 
@@ -28,6 +29,7 @@ typedef struct command_info{
     int pid;
     long start_time;
     long end_time;
+    long wait_time;
     long exec_time;
     char** command;
     int arg_count;
@@ -88,15 +90,23 @@ int execute_pip(char* command, char** command_history, int history_size);
 
 int shInterpreter(char* shFile, char** command_history, int history_size);
 
-PriorityQueues* setup();
+PriorityQueues* setup_pq();
+
 
 void cleanup();
 
 void cleanup_and_exit();
 
+typedef struct{
+    command_info* arr[COMHISLEN];
+    int com_counter;
+    sem_t mutex;
+}Commands;
 
-command_info* commands[COMHISLEN];
-int com_counter = 0;
+Commands* commands;
+
+Commands* setup_coms();
+
 
 void init_shell(int ncpu, int tslice){
     clear();
@@ -164,16 +174,19 @@ int launch(char** args, int arg_num, bool is_pipe, int history_size, char** comm
             perror("malloc");
             exit(1);
         }
-
+        
+        sem_wait(&(commands->mutex));
         info->pid = status;
         info->end_time = clock();
         info->start_time = start_time;
         info->exec_time = info->end_time - info->start_time;
         info->command = args;
         info->arg_count = arg_num;
+        info->wait_time = 0;
 
-        commands[com_counter] = info;
-        com_counter++;
+        commands->arr[commands->com_counter] = info;
+        commands->com_counter++;
+        sem_post(&(commands->mutex));
 
         return status;
     }
@@ -290,15 +303,18 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
             exit(1);
         }
 
+        sem_wait(&(commands->mutex));
         info->pid = status;
         info->end_time = clock();
         info->start_time = start_time;
         info->exec_time = info->end_time - info->start_time;
         info->command = args;
         info->arg_count = arg_num;
+        info->wait_time = 0;
 
-        commands[com_counter] = info;
-        com_counter++;
+        commands->arr[commands->com_counter] = info;
+        commands->com_counter++;
+        sem_post(&(commands->mutex));
 
         return status;
     }
@@ -309,17 +325,20 @@ void signal_Handler(int signum) {
     if(signum == SIGINT) {
         printf("\n");
         printf("\nCommand_History:\n");
-        printf("PID\t\t Command\t\t StartTime\t ExecTime\n");
-        for (int i = 0; i < com_counter; i++){
-            printf("%d \t\t",commands[i] -> pid);
-            for (int j = 0; j < commands[i] -> arg_count; j++){
-                printf("%s ",commands[i] -> command[j]);
+        printf("PID\t\t Command\t\t StartTime\t WaitTime\t ExecTime\n");
+        sem_wait(&(commands->mutex));
+        for (int i = 0; i < commands->com_counter; i++){
+            printf("%d \t\t",commands->arr[i] -> pid);
+            for (int j = 0; j < commands->arr[i] -> arg_count; j++){
+                printf("%s ",commands->arr[i] -> command[j]);
             }
-            printf("\t\t%ld \t\t",commands[i] -> start_time);
-            printf("%ld \t",commands[i] -> exec_time);
+            printf("\t\t%ld \t\t",commands->arr[i] -> start_time);
+            printf("%ld \t",commands->arr[i] -> wait_time);
+            printf("%ld \t",commands->arr[i] -> exec_time);
             printf("\n");
             
         }
+        sem_post(&(commands->mutex));
         cleanup_and_exit();
         exit(1);
     }
@@ -364,17 +383,17 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
     //list down the builtin shell commands here to add support
     if(strcmp(args[0], "exit") == 0) {
         printf("\nCommand_History:\n");
-        printf("PID\t\t Command\t\t StartTime\t ExecTime\n");
-        for (int i = 0; i < com_counter; i++){
-            printf("%d \t\t",commands[i] -> pid);
-            for (int j = 0; j < commands[i] -> arg_count; j++){
-                printf("%s ",commands[i] -> command[j]);
+        printf("PID\t\t Command");
+        sem_wait(&(commands->mutex));
+        for (int i = 0; i < commands->com_counter; i++){
+            printf("%d \t\t",commands->arr[i] -> pid);
+            for (int j = 0; j < commands->arr[i] -> arg_count; j++){
+                printf("%s ",commands->arr[i] -> command[j]);
             }
-            printf("\t\t%ld \t\t",commands[i] -> start_time);
-            printf("%ld \t",commands[i] -> exec_time);
             printf("\n");
             
         }
+        sem_post(&(commands->mutex));
         
         exit(0);
         return 0;
@@ -560,7 +579,7 @@ int shell(int ncpu, int tslice){
 
 
 
-PriorityQueues* setup() {
+PriorityQueues* setup_pq() {
     shm_fd = shm_open("scheduler", O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1) {
         perror("shm_open");
@@ -608,19 +627,47 @@ PriorityQueues* setup() {
     return pq;
 }
 
+Commands* setup_coms(){
+    com_fd = shm_open("commands", O_CREAT | O_RDWR, 0666);
+    if (com_fd == -1) {
+        perror("shm_open");
+        exit(1);
+    }
+
+    ftruncate(com_fd, sizeof(Commands));
+
+    Commands* coms = mmap(NULL, sizeof(Commands), PROT_READ | PROT_WRITE, MAP_SHARED, com_fd, 0);
+    if (coms == MAP_FAILED) {
+        perror("mmap");
+        exit(1);
+    }
+
+    coms->com_counter = 0;
+
+    sem_init(&(coms->mutex), 1, 1);
+
+    return coms;
+}
+
 void cleanup(){
     munmap(priorityQueues, sizeof(PriorityQueues));
+    munmap(commands, sizeof(Commands));
     close(shm_fd);
+    close(com_fd);
     shm_unlink("scheduler");
+    shm_unlink("commands");
     sem_destroy(&(priorityQueues->q1.mutex));
     sem_destroy(&(priorityQueues->q2.mutex));
     sem_destroy(&(priorityQueues->q3.mutex));
     sem_destroy(&(priorityQueues->q4.mutex));
+    sem_destroy(&(commands->mutex));
 }
 
 void cleanup_and_exit(){
     munmap(priorityQueues, sizeof(PriorityQueues));
+    munmap(commands, sizeof(Commands));
     close(shm_fd);
+    close(com_fd);
     exit(0);
 }
 
@@ -631,8 +678,6 @@ int scheduler(int ncpu, int tslice){
         //implement round robin on each queue seperately
         for(int i = 0; i < ncpu; i++){
             
-
-            //if queue 1 is not empty
 
             if(priorityQueues -> q4.isEmpty == 0){
                 sem_wait(&(priorityQueues->q4.mutex));
@@ -647,6 +692,15 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+                sem_wait(&(commands->mutex));
+                for (int i = 0; i < commands->com_counter; i++){
+                    if (commands->arr[i]->pid == p.pid){
+                        commands->arr[i]->wait_time += tslice;
+                    }
+                }
+                sem_post(&(commands->mutex));
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -675,6 +729,15 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+                sem_wait(&(commands->mutex));
+                for (int i = 0; i < commands->com_counter; i++){
+                    if (commands->arr[i]->pid == p.pid){
+                        commands->arr[i]->wait_time += tslice;
+                    }
+                }
+                sem_post(&(commands->mutex));
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -703,6 +766,15 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+                sem_wait(&(commands->mutex));
+                for (int i = 0; i < commands->com_counter; i++){
+                    if (commands->arr[i]->pid == p.pid){
+                        commands->arr[i]->wait_time += tslice;
+                    }
+                }
+                sem_post(&(commands->mutex));
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -731,6 +803,15 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+                sem_wait(&(commands->mutex));
+                for (int i = 0; i < commands->com_counter; i++){
+                    if (commands->arr[i]->pid == p.pid){
+                        commands->arr[i]->wait_time += tslice;
+                    }
+                }
+                sem_post(&(commands->mutex));
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -764,7 +845,8 @@ int main(int argc, char** argv){
     int ncpu = atoi(argv[1]);
     int tslice = atoi(argv[2]);
 
-    priorityQueues = setup();
+    priorityQueues = setup_pq();
+    commands = setup_coms();
     
     int status;
     pid_t schedule = fork();
