@@ -90,6 +90,8 @@ int execute_pip(char* command, char** command_history, int history_size);
 
 int shInterpreter(char* shFile, char** command_history, int history_size);
 
+void sigchld_handler(int signo);
+
 PriorityQueues* setup();
 
 void cleanup();
@@ -198,9 +200,6 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
         signal(SIGCHLD,sigchld_handler);
         int kill_result = kill(status, SIGSTOP);
 
-        printf("hi\n");
-        printf("jobhi : %d\n ",priorityQueues->q1.queue[0].pid);
-        printf("jobhi %d ",status);
         if (arg_num == 2){
             
             
@@ -224,7 +223,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 if (priorityQueues->q1.front == -1) {
                     priorityQueues->q1.front = 0;
                 }
-                printf("checking\n");
+                
                 priorityQueues->q1.rear = (priorityQueues->q1.rear + 1) % JOBMAX;
                 priorityQueues->q1.queue[priorityQueues->q1.rear].pid = status;
                 priorityQueues->q1.queue[priorityQueues->q1.rear].state = 0;
@@ -245,12 +244,6 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
                 priorityQueues->q2.isEmpty = 0;
                 sem_post(&(priorityQueues->q2.mutex));
                 
-                // //print q1
-                for (int i = 0; i < JOBMAX; i++){
-                    if (priorityQueues->q2.queue[i].pid != 0){
-                        printf("%d ",priorityQueues->q2.queue[i].pid);
-                    }
-                }
 
             }
             else if(priority == 3){
@@ -333,7 +326,6 @@ void signal_Handler(int signum) {
 void sigchld_handler(int signo) {
     if (flag) {
         flag_process = 1;
-        printf("SIGCHLD received - Child process terminated\n");
         // Handle termination logic here
     }
 }
@@ -662,6 +654,8 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+                
+        
 
                 if (flag_process == 1){
                     flag_process = 0;
