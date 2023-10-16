@@ -195,6 +195,7 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
             }
     } else {
         // waitpid(status,NULL,0);
+        signal(SIGCHLD,sigchld_handler);
         int kill_result = kill(status, SIGSTOP);
 
         printf("hi\n");
@@ -661,11 +662,12 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
-                signal(SIGCHLD,sigchld_handler);
+
                 if (flag_process == 1){
                     flag_process = 0;
                     break;
                 } 
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -675,9 +677,12 @@ int scheduler(int ncpu, int tslice){
                 p.state = 0;
 
                 //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q4.mutex));
-                enqueue(&(priorityQueues->q4), p);
-                sem_post(&(priorityQueues->q4.mutex));
+                if(flag_process==0){
+                    sem_wait(&(priorityQueues->q4.mutex));
+                    enqueue(&(priorityQueues->q4), p);
+                    sem_post(&(priorityQueues->q4.mutex));
+                }
+                
                 continue;
             }
         
@@ -694,6 +699,12 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+                if(flag_process == 1){
+                    flag_process = 0;
+                    break;
+                }
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -703,9 +714,11 @@ int scheduler(int ncpu, int tslice){
                 p.state = 0;
 
                 //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q3.mutex));
-                enqueue(&(priorityQueues->q3), p);
-                sem_post(&(priorityQueues->q3.mutex));
+                if(flag_process==0){
+                    sem_wait(&(priorityQueues->q3.mutex));
+                    enqueue(&(priorityQueues->q3), p);
+                    sem_post(&(priorityQueues->q3.mutex));
+                }
                 continue;
             }
 
@@ -722,6 +735,11 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+                if(flag_process == 1){
+                    flag_process = 0;
+                    break;
+                }
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -731,9 +749,11 @@ int scheduler(int ncpu, int tslice){
                 p.state = 0;
 
                 //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q2.mutex));
-                enqueue(&(priorityQueues->q2), p);
-                sem_post(&(priorityQueues->q2.mutex));
+                if(flag_process==0){
+                    sem_wait(&(priorityQueues->q2.mutex));
+                    enqueue(&(priorityQueues->q2), p);
+                    sem_post(&(priorityQueues->q2.mutex));
+                }
                 continue;
             }
 
@@ -750,6 +770,13 @@ int scheduler(int ncpu, int tslice){
                     exit(1);
                 }
                 usleep(tslice*1000);
+
+
+                if(flag_process == 1){
+                    flag_process = 0;
+                    break;
+                }
+
                 //sigstop the process
                 kill_result = kill(p.pid, SIGSTOP);
                 if (kill_result == -1) {
@@ -759,9 +786,11 @@ int scheduler(int ncpu, int tslice){
                 p.state = 0;
 
                 //enqueue the process at the end of the queue
-                sem_wait(&(priorityQueues->q1.mutex));
-                enqueue(&(priorityQueues->q1), p);
-                sem_post(&(priorityQueues->q1.mutex));  
+                if(flag_process==0){
+                    sem_wait(&(priorityQueues->q1.mutex));
+                    enqueue(&(priorityQueues->q1), p);
+                    sem_post(&(priorityQueues->q1.mutex));
+                }
                 continue;
             } 
 
