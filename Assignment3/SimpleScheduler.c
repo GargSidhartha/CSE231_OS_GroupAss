@@ -98,7 +98,7 @@ void cleanup();
 void cleanup_and_exit();
 
 typedef struct{
-    command_info* arr[COMHISLEN];
+    command_info arr[COMHISLEN];
     int com_counter;
     sem_t mutex;
 }Commands;
@@ -168,21 +168,22 @@ int launch(char** args, int arg_num, bool is_pipe, int history_size, char** comm
             dup2(fd[0], STDIN_FILENO);
         }
     
-        command_info* info = malloc(sizeof(command_info));
+        // command_info* info = malloc(sizeof(command_info));
         // malloc NULL error handled
-        if (info == NULL) {
-            perror("malloc");
-            exit(1);
-        }
+        // if (info == NULL) {
+        //     perror("malloc");
+        //     exit(1);
+        // }
+        command_info info;
         
         sem_wait(&(commands->mutex));
-        info->pid = status;
-        info->end_time = clock();
-        info->start_time = start_time;
-        info->exec_time = info->end_time - info->start_time;
-        info->command = args;
-        info->arg_count = arg_num;
-        info->wait_time = 0;
+        info.pid = status;
+        info.end_time = clock();
+        info.start_time = start_time;
+        info.exec_time = info.end_time - info.start_time;
+        info.command = args;
+        info.arg_count = arg_num;
+        info.wait_time = 0;
 
         commands->arr[commands->com_counter] = info;
         commands->com_counter++;
@@ -296,21 +297,22 @@ int submit_launch(char** args, int arg_num, bool is_pipe, int history_size, char
             }
         }
         
-        command_info* info = malloc(sizeof(command_info));
-        // malloc NULL error handled
-        if (info == NULL) {
-            perror("malloc");
-            exit(1);
-        }
+        // command_info* info = malloc(sizeof(command_info));
+        // // malloc NULL error handled
+        // if (info == NULL) {
+        //     perror("malloc");
+        //     exit(1);
+        // }
+        command_info info;
 
         sem_wait(&(commands->mutex));
-        info->pid = status;
-        info->end_time = clock();
-        info->start_time = start_time;
-        info->exec_time = info->end_time - info->start_time;
-        info->command = args;
-        info->arg_count = arg_num;
-        info->wait_time = 0;
+        info.pid = status;
+        info.end_time = clock();
+        info.start_time = start_time;
+        info.exec_time = info.end_time - info.start_time;
+        info.command = args;
+        info.arg_count = arg_num;
+        info.wait_time = 0;
 
         commands->arr[commands->com_counter] = info;
         commands->com_counter++;
@@ -328,13 +330,13 @@ void signal_Handler(int signum) {
         printf("PID\t\t Command\t\t StartTime\t WaitTime\t ExecTime\n");
         sem_wait(&(commands->mutex));
         for (int i = 0; i < commands->com_counter; i++){
-            printf("%d \t\t",commands->arr[i] -> pid);
-            for (int j = 0; j < commands->arr[i] -> arg_count; j++){
-                printf("%s ",commands->arr[i] -> command[j]);
+            printf("%d \t\t",commands->arr[i].pid);
+            for (int j = 0; j < commands->arr[i].arg_count; j++){
+                printf("%s ",commands->arr[i].command[j]);
             }
-            printf("\t\t%ld \t\t",commands->arr[i] -> start_time);
-            printf("%ld \t",commands->arr[i] -> wait_time);
-            printf("%ld \t",commands->arr[i] -> exec_time);
+            printf("\t\t%ld \t\t",commands->arr[i].start_time);
+            printf("%ld \t",commands->arr[i].wait_time);
+            printf("%ld \t",commands->arr[i].exec_time);
             printf("\n");
             
         }
@@ -386,9 +388,9 @@ int execute(char* command,char** command_history,int history_size, bool is_pipe)
         printf("PID\t\t Command");
         sem_wait(&(commands->mutex));
         for (int i = 0; i < commands->com_counter; i++){
-            printf("%d \t\t",commands->arr[i] -> pid);
-            for (int j = 0; j < commands->arr[i] -> arg_count; j++){
-                printf("%s ",commands->arr[i] -> command[j]);
+            printf("%d \t\t",commands->arr[i].pid);
+            for (int j = 0; j < commands->arr[i].arg_count; j++){
+                printf("%s ",commands->arr[i].command[j]);
             }
             printf("\n");
             
@@ -695,8 +697,8 @@ int scheduler(int ncpu, int tslice){
 
                 sem_wait(&(commands->mutex));
                 for (int i = 0; i < commands->com_counter; i++){
-                    if (commands->arr[i]->pid == p.pid){
-                        commands->arr[i]->wait_time += tslice;
+                    if (commands->arr[i].pid == p.pid){
+                        commands->arr[i].wait_time += tslice;
                     }
                 }
                 sem_post(&(commands->mutex));
@@ -732,8 +734,8 @@ int scheduler(int ncpu, int tslice){
 
                 sem_wait(&(commands->mutex));
                 for (int i = 0; i < commands->com_counter; i++){
-                    if (commands->arr[i]->pid == p.pid){
-                        commands->arr[i]->wait_time += tslice;
+                    if (commands->arr[i].pid == p.pid){
+                        commands->arr[i].wait_time += tslice;
                     }
                 }
                 sem_post(&(commands->mutex));
@@ -769,8 +771,8 @@ int scheduler(int ncpu, int tslice){
 
                 sem_wait(&(commands->mutex));
                 for (int i = 0; i < commands->com_counter; i++){
-                    if (commands->arr[i]->pid == p.pid){
-                        commands->arr[i]->wait_time += tslice;
+                    if (commands->arr[i].pid == p.pid){
+                        commands->arr[i].wait_time += tslice;
                     }
                 }
                 sem_post(&(commands->mutex));
@@ -806,8 +808,8 @@ int scheduler(int ncpu, int tslice){
 
                 sem_wait(&(commands->mutex));
                 for (int i = 0; i < commands->com_counter; i++){
-                    if (commands->arr[i]->pid == p.pid){
-                        commands->arr[i]->wait_time += tslice;
+                    if (commands->arr[i].pid == p.pid){
+                        commands->arr[i].wait_time += tslice;
                     }
                 }
                 sem_post(&(commands->mutex));
