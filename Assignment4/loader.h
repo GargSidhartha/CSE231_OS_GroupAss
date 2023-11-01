@@ -1,7 +1,7 @@
 /*
  * No changes are allowed to this file
  */
-#define _XOPEN_SOURCE 700
+
 #include <stdio.h>
 #include <elf.h>
 #include <string.h>
@@ -11,7 +11,6 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <signal.h>
 
 void load_and_run_elf(char* exe);
 void loader_cleanup();
