@@ -66,6 +66,5 @@ The scheduler utilizes shared memory and semaphores for inter-process communicat
 ## Contribution
 - All the work was collectively and equally done by both the participants Sidhartha Garg and Saksham Singh
 - The code programming and compilation for the shell was collectively discussed and executed.
-- Code compilation was carried on Sidhartha Garg's Intel based machine, but were known to work just as well on Saksham Singh's ARM based machine.
-- Bonus one was handled by Sidhartha Garg, Bonus two by Saksham Singh
+- Code compilation was carried on Sidhartha Garg's Intel based machine, but were known to work just as well on Saksham Singh's ARM based machine for some time.
 - GitHub repo : https://github.com/SakshxmSingh/CSE231_OS_GroupAss

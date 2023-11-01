@@ -9,10 +9,7 @@ int fib(int n){
 }
 double a = 0;
 int main(){
-    for (int i = 0; i < 10000000; i++){
-        a++;
-    }
-    
+    sleep(6);
     printf("%d\n",fib(20));
 
     

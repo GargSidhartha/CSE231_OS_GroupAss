@@ -1,5 +1,5 @@
 clean:
-	rm a.out fib hello SimpleScheduler
+	rm fib hello SimpleScheduler
 
 fib_hello:
 	gcc -o fib fib.c
