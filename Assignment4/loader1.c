@@ -150,7 +150,7 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
 
     // Read the content of the segment from the ELF file
     lseek(fd, segmntHdr->p_offset, SEEK_SET);
-    ssize_t bytes_read = read(fd, virtual_mem, segmntHdr->p_filesz);
+    ssize_t bytes_read = read(fd, virtual_mem, segmntHdr->p_memsz);
 
     if (bytes_read == -1) {
         perror("Error reading segment from ELF file");
@@ -168,6 +168,15 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
  * Load and run the ELF executable file
  */
 void load_and_run_elf(char* exe) {
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = seg_handler;
+
+    if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+        perror("Error setting up signal handler");
+        exit(1);
+      }
+      
   fd = open(exe, O_RDONLY);
 
   // 1. Load entire binary content into the memory from the ELF file.
@@ -182,25 +191,15 @@ void load_and_run_elf(char* exe) {
     exit(1);
     return;
   }
-
+    
 
 
   int address = ehdr->e_entry;
-int (*_start)() = (int (*)())(virtual_mem + address);
+  int (*_start)() = (int (*)())(virtual_mem + address);
   
-
-  
-
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
-  struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = seg_handler;
 
-    if (sigaction(SIGSEGV, &sa, NULL) == -1) {
-        perror("Error setting up signal handler");
-        exit(1);
-      }
   printf("page faults: %d\n",total_page_faults);
   int result = _start();
   
