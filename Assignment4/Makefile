@@ -1,6 +1,6 @@
 all:
 	gcc  -m32 -no-pie -nostdlib -o fib fib.c
-	gcc -m32 -o loader loader.c
+	gcc -m32 -o loader loader1.c
 
 clean:
 	-@rm -f fib loader
