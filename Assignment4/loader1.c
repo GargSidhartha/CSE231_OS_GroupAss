@@ -64,24 +64,20 @@ int checkELFIdent(Elf32_Ehdr * ehdr) {
     return 1;
   }
 }
+
+
 void seg_handler(int signum, siginfo_t *info, void *context) {
     printf("Segmentation fault at address %p\n", info->si_addr);
     int temp = (int)(info -> si_addr) / 0x1000;
     
-    
-    virtual_mem = mmap(NULL, 0x1000 , PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-
+    virtual_mem = mmap((void*)temp*0x1000, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (virtual_mem == MAP_FAILED) {
-        perror("Error mapping memory");
-        exit(1);
+      perror("mmap failed");
+      exit(1);
     }
+    printf("Virtual memory address %p\n", virtual_mem);
 
-    // // Copy the content of the segment into the newly allocated memory
-    // lseek(fd, segmntHdr->p_offset, SEEK_SET);
-    // read(fd, virtual_mem, segmntHdr->p_memsz);
 
-    // // Resume execution
-    // return;
 }
 
 /*
@@ -113,18 +109,6 @@ void load_and_run_elf(char* exe) {
     }
   }
 
-  // 3. Allocate memory of the size "p_memsz" using mmap function 
-  //    and then copy the segment content
-//   void * virtual_mem = mmap(NULL, segmntHdr->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
-
-//   char * virtual_memC = virtual_mem;
- 
-//   lseek(fd, segmntHdr->p_offset, SEEK_SET);
-//   read(fd, virtual_memC, segmntHdr->p_memsz);
-
-
-  // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
-
   int address = ehdr->e_entry - segmntHdr->p_vaddr;
 
 
@@ -132,21 +116,22 @@ void load_and_run_elf(char* exe) {
 
 
   int (*_start)() = (int (*)())(virtual_mem + address);
+  int result = _start();
+
 
   struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = seg_handler;
+  sa.sa_flags = SA_SIGINFO;
+  sa.sa_sigaction = seg_handler;
 
-if (sigaction(SIGSEGV, &sa, NULL) == -1) {
-        perror("Error setting up signal handler");
-        exit(1);
+  if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+      perror("Error setting up signal handler");
+      exit(1);
     }
 
 
   
   // 6. Call the "_start" method and print the value returned from the "_start"
 
-  int result = _start();
   printf("User _start return value = %d\n",result);
 }
 
