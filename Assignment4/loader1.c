@@ -70,15 +70,20 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
     printf("Segmentation fault at address %p\n", info->si_addr);
     int temp = (int)(info -> si_addr) / 0x1000;
     
-    virtual_mem = mmap((void*)temp*0x1000, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    virtual_mem = mmap((void*)(temp*0x1000), 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (virtual_mem == MAP_FAILED) {
       perror("mmap failed");
       exit(1);
     }
     printf("Virtual memory address %p\n", virtual_mem);
-
-
+    return;
+    
 }
+
+int total_page_faults = 0;
+int total_page_allocations = 0;
+
+
 
 /*
  * Load and run the ELF executable file
@@ -113,21 +118,23 @@ void load_and_run_elf(char* exe) {
 
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
-
+  
 
   int (*_start)() = (int (*)())(virtual_mem + address);
-  int result = _start();
-
-
+  
   struct sigaction sa;
-  sa.sa_flags = SA_SIGINFO;
-  sa.sa_sigaction = seg_handler;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = seg_handler;
 
-  if (sigaction(SIGSEGV, &sa, NULL) == -1) {
-      perror("Error setting up signal handler");
-      exit(1);
-    }
+    if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+        perror("Error setting up signal handler");
+        exit(1);
+      }
 
+
+  
+
+  int result = _start();
 
   
   // 6. Call the "_start" method and print the value returned from the "_start"
