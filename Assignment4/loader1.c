@@ -7,6 +7,8 @@ Elf32_Phdr * segmntHdr;
 int fd;
 char* virtual_memC;
 void* virtual_mem;
+int total_page_faults = 0;
+int total_page_allocations = 0;
 
 /*
  * release memory and other cleanups
@@ -66,22 +68,99 @@ int checkELFIdent(Elf32_Ehdr * ehdr) {
 }
 
 
+// void seg_handler(int signum, siginfo_t *info, void *context) {
+//     printf("Segmentation fault at address %p\n", info->si_addr);
+//     int temp = (int)(info -> si_addr) / 0x1000;
+    
+//     virtual_mem = mmap((void*)(temp*0x1000), 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+//     if (virtual_mem == MAP_FAILED) {
+//       perror("mmap failed");
+//       exit(1);
+//     }
+//     printf("Virtual memory address %p\n", virtual_mem);
+
+//     lseek(fd,)
+//     return;
+    
+// }
+
+
+// void seg_handler(int signum, siginfo_t *info, void *context) {
+//     printf("Segmentation fault at address %p\n", info->si_addr);
+
+//     // Calculate the aligned start address of the page
+//     void *page_start = (void*)((uintptr_t)info->si_addr & ~((uintptr_t)0xFFF)); // Assuming page size is 4KB
+//     for(int i = 0; i < ehdr -> e_phnum; i++){
+//       phdr = malloc(ehdr -> e_phnum * sizeof(Elf32_Phdr));
+//       read(fd,phdr,sizeof(Elf32_Phdr));
+//       if (phdr -> p_vaddr <= (int)info -> si_addr && phdr -> p_vaddr + phdr->p_offset > (int)info -> si_addr){
+//         segmntHdr = phdr;
+//       }
+//     }
+//     // Allocate a new page using mmap
+//     virtual_mem = mmap(page_start, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+//     if (virtual_mem == MAP_FAILED) {
+//         perror("mmap failed");
+//         exit(1);
+//     }
+
+//     // Update statistics
+//     total_page_faults++;
+//     total_page_allocations++;
+
+//     // Read the content of the segment from the ELF file
+//     lseek(fd, segmntHdr->p_offset, SEEK_SET);
+//     read(fd, (char*)virtual_mem, segmntHdr->p_memsz);
+
+
+//     // Copy the content of the segment into the newly allocated memory
+    
+
+//     // Resume execution
+//     return;
+// }
+
 void seg_handler(int signum, siginfo_t *info, void *context) {
     printf("Segmentation fault at address %p\n", info->si_addr);
-    int temp = (int)(info -> si_addr) / 0x1000;
-    
-    virtual_mem = mmap((void*)(temp*0x1000), 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (virtual_mem == MAP_FAILED) {
-      perror("mmap failed");
-      exit(1);
+
+    // Calculate the aligned start address of the page
+    void *page_start = (void*)((uintptr_t)info->si_addr & ~((uintptr_t)0xFFF)); // Assuming page size is 4KB
+
+    // Find the corresponding program header
+    for (int i = 0; i < ehdr->e_phnum; i++) {
+        if (phdr[i].p_vaddr <= (uintptr_t)info->si_addr &&
+            (phdr[i].p_vaddr + phdr[i].p_memsz) > (uintptr_t)info->si_addr) {
+            segmntHdr = &phdr[i];
+            break;
+        }
     }
-    printf("Virtual memory address %p\n", virtual_mem);
+
+    // Allocate a new page using mmap
+    virtual_mem = mmap(page_start, segmntHdr->p_memsz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (virtual_mem == MAP_FAILED) {
+        perror("mmap failed");
+        exit(1);
+    }
+
+    // Update statistics
+    total_page_faults++;
+    total_page_allocations++;
+
+    // Read the content of the segment from the ELF file
+    lseek(fd, segmntHdr->p_offset, SEEK_SET);
+    ssize_t bytes_read = read(fd, virtual_mem, segmntHdr->p_filesz);
+
+    if (bytes_read == -1) {
+        perror("Error reading segment from ELF file");
+        exit(1);
+    }
+
+    // Resume execution
     return;
-    
 }
 
-int total_page_faults = 0;
-int total_page_allocations = 0;
 
 
 
@@ -104,24 +183,16 @@ void load_and_run_elf(char* exe) {
     return;
   }
 
-  // 2. Iterate through the PHDR table and find the section of PT_LOAD 
-  //    type that contains the address of the entrypoint method in fib.c
-  for(int i = 0; i < ehdr -> e_phnum; i++){
-    phdr = malloc(ehdr -> e_phnum * sizeof(Elf32_Phdr));
-    read(fd,phdr,sizeof(Elf32_Phdr));
-    if (phdr -> p_type == 1 && phdr -> p_vaddr <= ehdr -> e_entry && phdr -> p_vaddr + phdr->p_offset > ehdr -> e_entry){
-      segmntHdr = phdr;
-    }
-  }
 
-  int address = ehdr->e_entry - segmntHdr->p_vaddr;
+
+  int address = ehdr->e_entry;
+int (*_start)() = (int (*)())(virtual_mem + address);
+  
+
+  
 
 
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
-  
-
-  int (*_start)() = (int (*)())(virtual_mem + address);
-  
   struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = seg_handler;
@@ -130,12 +201,8 @@ void load_and_run_elf(char* exe) {
         perror("Error setting up signal handler");
         exit(1);
       }
-
-
-  
-
+  printf("page faults: %d\n",total_page_faults);
   int result = _start();
-
   
   // 6. Call the "_start" method and print the value returned from the "_start"
 
