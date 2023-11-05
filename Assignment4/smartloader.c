@@ -1,6 +1,7 @@
 #include "loader.h"
 #include <signal.h>
 #include <stdbool.h>
+#define PAGESIZE 0x1000
 
 Elf32_Ehdr *ehdr;
 Elf32_Phdr *phdr;
@@ -8,8 +9,9 @@ Elf32_Phdr * segmntHdr;
 int fd;
 char* virtual_memC;
 void* virtual_mem;
-int total_page_faults = 0;
-int total_page_allocations = 0;
+int faultnum = 0;
+int allocnum = 0;
+int internalFrag = 0;
 
 /*
  * release memory and other cleanups
@@ -68,62 +70,10 @@ int checkELFIdent(Elf32_Ehdr * ehdr) {
   }
 }
 
-
-// void seg_handler(int signum, siginfo_t *info, void *context) {
-//     lseek(fd,ehdr -> e_phoff, SEEK_SET);
-//     printf("Segmentation fault at address %p\n", info->si_addr);
-
-//     // Calculate the aligned start address of the page
-//     // void *page_start = (void*)((uintptr_t)info->si_addr & ~((uintptr_t)0xFFF)); // Assuming page size is 4KB
-//     void *page_start = (void*)(((int)info -> si_addr / 0x1000) * 0x1000);
-//     // Find the corresponding program header
-//     bool flag = false;
-
-//     for(int i = 0; i < ehdr -> e_phnum; i++){
-//       phdr = malloc(ehdr -> e_phnum * sizeof(Elf32_Phdr));
-//       read(fd,phdr,sizeof(Elf32_Phdr));
-//       if (phdr -> p_vaddr <= (int)info -> si_addr && phdr -> p_vaddr + phdr->p_memsz >= (int)info -> si_addr){
-//         segmntHdr = phdr;
-//         printf("%0x",segmntHdr -> p_vaddr);
-//         flag = true;
-//       }
-//     }
-    
-    
-//     // Allocate a new page using mmap
-//     if (flag == true){
-
-//       virtual_mem = mmap((void*)segmntHdr -> p_vaddr, (segmntHdr->p_memsz/0x1000 + 1) * 0x1000 , PROT_READ | PROT_WRITE | PROT_EXEC , MAP_PRIVATE, fd, segmntHdr -> p_offset);
-//       printf("\n%0x",(int)virtual_mem);
-//       if (virtual_mem == MAP_FAILED) {
-//         perror("mmap failed");
-//         exit(1);
-//     }
-
-//     total_page_faults++;
-//     total_page_allocations++;
-
-//     }
-//     else{
-//       printf("Segment not found\n");
-//     }
-    
-    
-
-//     printf("exiting...\n");
-//     // Resume execution
-// }
-
-
-
 void seg_handler(int signum, siginfo_t *info, void *context) {
     lseek(fd,ehdr -> e_phoff, SEEK_SET);
     printf("Segmentation fault at address %p\n", info->si_addr);
 
-    // Calculate the aligned start address of the page
-    // void *page_start = (void*)((uintptr_t)info->si_addr & ~((uintptr_t)0xFFF)); // Assuming page size is 4KB
-    // void *page_start = (void*)(((int)info -> si_addr / 0x1000) * 0x1000);
-    // Find the corresponding program header
     bool flag = false;
 
     for(int i = 0; i < ehdr -> e_phnum; i++){
@@ -141,21 +91,25 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
     
     // Allocate a new page using mmap
     if (flag == true){
-      int numpages = segmntHdr -> p_memsz / 0x1000 + 1;
+      int numpages = segmntHdr -> p_memsz / PAGESIZE + 1;
       printf("page numbers: %d",numpages);
       for(int i = 0; i < numpages; i++){
-        int page_start = segmntHdr -> p_vaddr + i*0x1000;
-        int page_end = page_start + 0x1000;
+        int page_start = segmntHdr -> p_vaddr + i*PAGESIZE;
+        int page_end = page_start + PAGESIZE;
+
+        if (i == numpages - 1){
+          internalFrag = internalFrag + (PAGESIZE - (segmntHdr -> p_memsz) % 0x1000);
+        }
 
         if ((int)info -> si_addr >= page_start && (int) info -> si_addr < page_end){
-          virtual_mem = mmap((void*)page_start, 0x1000 , PROT_READ | PROT_WRITE | PROT_EXEC , MAP_PRIVATE, fd, segmntHdr -> p_offset);
+          virtual_mem = mmap((void*)page_start, PAGESIZE , PROT_READ | PROT_WRITE | PROT_EXEC , MAP_PRIVATE, fd, segmntHdr -> p_offset);
           printf("\n%0x",(int)virtual_mem);
           if (virtual_mem == MAP_FAILED) {
                 perror("mmap failed");
                 exit(1);
             }
-          total_page_faults++;
-          total_page_allocations++;
+          faultnum++;
+          allocnum++;
           break;
         }
       }
@@ -163,6 +117,7 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
     else{
       printf("Segment not found\n");
     }
+
     lseek(fd,ehdr -> e_phoff, SEEK_SET);
     
     
@@ -187,7 +142,7 @@ void load_and_run_elf(char* exe) {
       
   fd = open(exe, O_RDONLY);
 
-  // 1. Load entire binary content into the memory from the ELF file.
+  
   ehdr = malloc(sizeof(Elf32_Ehdr));
   read(fd,ehdr,sizeof(Elf32_Ehdr));
 
@@ -225,7 +180,10 @@ int main(int argc, char** argv)
   // 2. passing it to the loader for carrying out the loading/execution
   load_and_run_elf(argv[1]);
   
-  printf("page faults: %d\n",total_page_faults);
+  printf("page faults: %d\n",faultnum);
+  printf("page allocations: %d\n",allocnum);
+  printf("Total internal Fragmentation: %f\n",(double) (internalFrag));
+  
   // 3. invoke the cleanup routine inside the loader  
   loader_cleanup();
   return 0;

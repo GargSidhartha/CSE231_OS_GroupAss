@@ -1,7 +1,7 @@
 all:
 	gcc  -m32 -no-pie -nostdlib -o sum sum.c
 	gcc  -m32 -no-pie -nostdlib -o fib fib.c
-	gcc -m32 -o loader loader1.c
+	gcc -m32 -o loader smartloader.c
 
 clean:
 	-@rm -f fib loader
