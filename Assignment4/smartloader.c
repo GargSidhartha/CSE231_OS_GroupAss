@@ -12,6 +12,8 @@ void* virtual_mem;
 int faultnum = 0;
 int allocnum = 0;
 int internalFrag = 0;
+#define MAXFAULTS 1000
+void * pageArray[MAXFAULTS];
 
 /*
  * release memory and other cleanups
@@ -20,6 +22,10 @@ void loader_cleanup() {
   free(ehdr);
   free(phdr);
   free(segmntHdr);
+  for(int i = 0; i < faultnum; i ++){
+    munmap(pageArray[i],PAGESIZE);
+  }
+  
   close(fd);
 }
 
@@ -71,28 +77,39 @@ int checkELFIdent(Elf32_Ehdr * ehdr) {
 }
 
 void seg_handler(int signum, siginfo_t *info, void *context) {
-    lseek(fd,ehdr -> e_phoff, SEEK_SET);
+    if (lseek(fd, ehdr->e_phoff, SEEK_SET) == (off_t)-1) {
+      printf("error in seeking");
+      _exit(EXIT_FAILURE);
+    }
+
     printf("Segmentation fault at address %p\n", info->si_addr);
 
     bool flag = false;
 
     for(int i = 0; i < ehdr -> e_phnum; i++){
       phdr = malloc(ehdr -> e_phnum * sizeof(Elf32_Phdr));
-      read(fd,phdr,sizeof(Elf32_Phdr));
+      if(!phdr){
+        printf("Failed to allocate");
+        close(fd);
+        exit(EXIT_FAILURE);
+      }
+      ssize_t buffer = read(fd,phdr,sizeof(Elf32_Phdr));
+      if (buffer == -1){
+        printf("failed to read");
+        close(fd);
+        exit(EXIT_FAILURE);
+      }
       
       if (phdr -> p_vaddr <= (int)info -> si_addr && phdr -> p_vaddr + phdr->p_memsz >= (int)info -> si_addr){
         segmntHdr = phdr;
-        printf("%0x",segmntHdr -> p_vaddr);
+        printf("Segment start address: %0x\n",segmntHdr -> p_vaddr);
         flag = true;
 
       }
     }
     
-    
-    // Allocate a new page using mmap
     if (flag == true){
       int numpages = segmntHdr -> p_memsz / PAGESIZE + 1;
-      printf("page numbers: %d",numpages);
       for(int i = 0; i < numpages; i++){
         int page_start = segmntHdr -> p_vaddr + i*PAGESIZE;
         int page_end = page_start + PAGESIZE;
@@ -103,7 +120,9 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
 
         if ((int)info -> si_addr >= page_start && (int) info -> si_addr < page_end){
           virtual_mem = mmap((void*)page_start, PAGESIZE , PROT_READ | PROT_WRITE | PROT_EXEC , MAP_PRIVATE, fd, segmntHdr -> p_offset);
-          printf("\n%0x",(int)virtual_mem);
+          pageArray[faultnum] = virtual_mem;
+
+          printf("Allocating a page at address: %0x\n",(int)virtual_mem);
           if (virtual_mem == MAP_FAILED) {
                 perror("mmap failed");
                 exit(1);
@@ -118,35 +137,48 @@ void seg_handler(int signum, siginfo_t *info, void *context) {
       printf("Segment not found\n");
     }
 
-    lseek(fd,ehdr -> e_phoff, SEEK_SET);
     
     
-    printf("exiting...\n");
+    printf("\n");
     // Resume execution
 }
 
-
-
-/*
- * Load and run the ELF executable file
- */
 void load_and_run_elf(char* exe) {
-    struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = seg_handler;
+  struct sigaction sa;
+  sa.sa_flags = SA_SIGINFO;
+  sa.sa_sigaction = seg_handler;
 
-    if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+  if (sigaction(SIGSEGV, &sa, NULL) == -1) {
         perror("Error setting up signal handler");
         exit(1);
       }
       
   fd = open(exe, O_RDONLY);
+  if (fd == -1){
+      perror("Error opening in file");
+    }
 
-  
   ehdr = malloc(sizeof(Elf32_Ehdr));
-  read(fd,ehdr,sizeof(Elf32_Ehdr));
+  if (!ehdr) {
+      perror("Failed to allocate memory for ELF header");
+      
+      close(fd);
+      exit(EXIT_FAILURE);
+  }
+  ssize_t buffer = read(fd, ehdr, sizeof(Elf32_Ehdr));
+  if (buffer == -1) {
+      perror("Failed to read ELF header");
+      free(ehdr);
+      close(fd);
+      exit(EXIT_FAILURE);
+  } else if (buffer != sizeof(Elf32_Ehdr)) {
+      fprintf(stderr, "Incomplete ELF header\n");
+      free(ehdr);
+      close(fd);
+      exit(EXIT_FAILURE);
+  }
 
-  //checks
+
   int flag = 0;
   flag = flag + is32Bit(ehdr) + isExec(ehdr) + checkELFIdent(ehdr);
   if(flag != 0){
@@ -161,12 +193,10 @@ void load_and_run_elf(char* exe) {
   int (*_start)() = (int (*)())(address);
   
 
-  // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
-
   
   int result = _start();
-  // 6. Call the "_start" method and print the value returned from the "_start"
-
+ 
+  printf("\n--------------------------------------Summary---------------------------------------\n");
   printf("User _start return value = %d\n",result);
 }
 
@@ -176,15 +206,14 @@ int main(int argc, char** argv)
     printf("Usage: %s <ELF Executable> \n",argv[0]);
     exit(1);
   }
-  // 1. carry out necessary checks on the input ELF file
-  // 2. passing it to the loader for carrying out the loading/execution
+  
   load_and_run_elf(argv[1]);
-  
-  printf("page faults: %d\n",faultnum);
-  printf("page allocations: %d\n",allocnum);
-  printf("Total internal Fragmentation: %f\n",(double) (internalFrag));
-  
-  // 3. invoke the cleanup routine inside the loader  
+
+  printf("\n");
+  printf("Page faults: %d\n",faultnum);
+  printf("Page allocations: %d\n",allocnum);
+  printf("Total internal Fragmentation: %d bytes and %f kB\n",internalFrag,((double)internalFrag) / 1024.0);
+
   loader_cleanup();
   return 0;
 }
