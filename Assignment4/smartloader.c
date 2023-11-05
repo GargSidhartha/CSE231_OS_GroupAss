@@ -1,7 +1,9 @@
 #include "loader.h"
 #include <signal.h>
 #include <stdbool.h>
+
 #define PAGESIZE 0x1000
+#define MAXFAULTS 1000
 
 Elf32_Ehdr *ehdr;
 Elf32_Phdr *phdr;
@@ -12,7 +14,6 @@ void* virtual_mem;
 int faultnum = 0;
 int allocnum = 0;
 int internalFrag = 0;
-#define MAXFAULTS 1000
 void * pageArray[MAXFAULTS];
 
 /*

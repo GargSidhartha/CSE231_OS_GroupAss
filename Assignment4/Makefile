@@ -4,4 +4,4 @@ all:
 	gcc -m32 -o smartloader smartloader.c
 
 clean:
-	-@rm -f fib smartloader
+	-@rm -f fib smartloader sum
