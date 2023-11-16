@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <cstring>
 
+
+
+typedef struct {
+  int element;
+} thread_args;
+
 int user_main(int argc, char **argv);
 
 /* Demonstration on how to pass lambda as parameter.
@@ -46,6 +52,32 @@ int main(int argc, char **argv) {
 #define main user_main
 
 
-void parallel_for(int start, int end, std::function<void(int)> && lambda, int numThread);
+void parallel_for(int start, int end, std::function<void(int)> && lambda, int numThread){
 
-void parallel_for(int start1, int end1, int start2, int end2, std::function<void(int, int)> && lambda, int numThread);
+  thread_args args[numThread];
+  pthread_t tid[numThread];
+
+  int chunk = (end - start) / numThread;
+
+  for(int i = 0; i < numThread; i++){
+    args[i].element = i;
+    auto thread_func = [&](void *ptr)->void*{
+      thread_args *args = (thread_args*)ptr;
+      lambda(i);
+      return NULL;
+    };
+    pthread_create(&tid[i], NULL, thread_func, (void*)&args[i]);
+  }
+
+  
+
+
+}
+
+void parallel_for(int start1, int end1, int start2, int end2, std::function<void(int, int)> && lambda, int numThread){
+  for(int i = start1; i < end1; i++){
+    for(int j = start2; j < end2; j++){
+      lambda(i, j);
+    }
+  }
+}
