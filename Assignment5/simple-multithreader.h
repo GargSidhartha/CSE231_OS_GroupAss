@@ -11,7 +11,16 @@ typedef struct {
   // int index;
   int start;
   int end;
-} thread_args;
+} thread_args_vect;
+
+typedef struct {
+  std::function<void(int, int)> lambda;
+  // int index;
+  int start1;
+  int end1;
+  int start2;
+  int end2;
+} thread_args_matr;
 
 int user_main(int argc, char **argv);
 
@@ -56,7 +65,7 @@ int main(int argc, char **argv) {
 
 
 void* thread_func_vect(void *ptr){
-  thread_args *t = (thread_args*)ptr;
+  thread_args_vect *t = (thread_args_vect*)ptr;
   // t->lambda(t->index);
   for(int i = t->start; i < t->end; i++){
     t->lambda(i);
@@ -64,10 +73,21 @@ void* thread_func_vect(void *ptr){
   return NULL;
 }
 
+void* thread_func_matr(void *ptr){
+  thread_args_matr *t = (thread_args_matr*)ptr;
+  // t->lambda(t->index);
+  for(int i = t->start1; i < t->end1; i++){
+    for(int j = t->start2; j < t->end2; j++){
+      t->lambda(i, j);
+    }
+  }
+  return NULL;
+}
+
 
 void parallel_for(int start, int end, std::function<void(int)> && lambda, int numThread){
 
-  thread_args args[numThread];
+  thread_args_vect args[numThread];
   pthread_t tid[numThread];
 
   int chunk = (end - start) / numThread;
@@ -75,7 +95,12 @@ void parallel_for(int start, int end, std::function<void(int)> && lambda, int nu
   for(int i = 0; i < numThread; i++){
     args[i].lambda = lambda;
     args[i].start = start + i * chunk;
-    args[i].end = i == numThread - 1 ? end : args[i].start + chunk;
+    if (i == numThread - 1) {
+        args[i].end = end;
+    } 
+    else {
+        args[i].end = args[i].start + chunk;
+    }
     pthread_create(&tid[i], NULL, thread_func_vect, (void*)&args[i]);
   }
 
@@ -86,13 +111,34 @@ void parallel_for(int start, int end, std::function<void(int)> && lambda, int nu
 
 void parallel_for(int start1, int end1, int start2, int end2, std::function<void(int, int)> && lambda, int numThread){
 
-  thread_args args[numThread];
+  thread_args_matr args[numThread];
   pthread_t tid[numThread];
 
+  int chunk = (end1 - start1) / numThread;
 
-  for(int i = start1; i < end1; i++){
-    for(int j = start2; j < end2; j++){
-      lambda(i, j);
+  for(int i = 0; i < numThread; i++){
+    args[i].lambda = lambda;
+    args[i].start1 = start1 + i * chunk;
+    args[i].start2 = start2;
+    args[i].end2 = end2;
+
+    if (i == numThread - 1) {
+        args[i].end1 = end1;
+    } 
+    else {
+        args[i].end1 = args[i].start1 + chunk;
     }
+    pthread_create(&tid[i], NULL, thread_func_matr, (void*)&args[i]);
   }
+
+  for(int i = 0; i < numThread; i++){
+    pthread_join(tid[i], NULL);
+  }
+
+
+  // for(int i = start1; i < end1; i++){
+  //   for(int j = start2; j < end2; j++){
+  //     lambda(i, j);
+  //   }
+  // }
 }
