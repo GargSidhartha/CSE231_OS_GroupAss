@@ -68,4 +68,3 @@ The code includes checks for the following conditions:
 - The code programming and compilation for SmartLoader was collectively discussed and executed.
 - Code compilation was carried on Sidhartha Garg's Intel based machine
 - GitHub repo : https://github.com/SakshxmSingh/CSE231_OS_GroupAss
-- 
