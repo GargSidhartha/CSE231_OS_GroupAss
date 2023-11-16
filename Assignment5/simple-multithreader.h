@@ -7,7 +7,10 @@
 
 
 typedef struct {
-  int element;
+  std::function<void(int)> lambda;
+  // int index;
+  int start;
+  int end;
 } thread_args;
 
 int user_main(int argc, char **argv);
@@ -52,6 +55,16 @@ int main(int argc, char **argv) {
 #define main user_main
 
 
+void* thread_func_vect(void *ptr){
+  thread_args *t = (thread_args*)ptr;
+  // t->lambda(t->index);
+  for(int i = t->start; i < t->end; i++){
+    t->lambda(i);
+  }
+  return NULL;
+}
+
+
 void parallel_for(int start, int end, std::function<void(int)> && lambda, int numThread){
 
   thread_args args[numThread];
@@ -60,21 +73,23 @@ void parallel_for(int start, int end, std::function<void(int)> && lambda, int nu
   int chunk = (end - start) / numThread;
 
   for(int i = 0; i < numThread; i++){
-    args[i].element = i;
-    auto thread_func = [&](void *ptr)->void*{
-      thread_args *args = (thread_args*)ptr;
-      lambda(i);
-      return NULL;
-    };
-    pthread_create(&tid[i], NULL, thread_func, (void*)&args[i]);
+    args[i].lambda = lambda;
+    args[i].start = start + i * chunk;
+    args[i].end = i == numThread - 1 ? end : args[i].start + chunk;
+    pthread_create(&tid[i], NULL, thread_func_vect, (void*)&args[i]);
   }
 
-  
-
-
+  for(int i = 0; i < numThread; i++){
+    pthread_join(tid[i], NULL);
+  }
 }
 
 void parallel_for(int start1, int end1, int start2, int end2, std::function<void(int, int)> && lambda, int numThread){
+
+  thread_args args[numThread];
+  pthread_t tid[numThread];
+
+
   for(int i = start1; i < end1; i++){
     for(int j = start2; j < end2; j++){
       lambda(i, j);
