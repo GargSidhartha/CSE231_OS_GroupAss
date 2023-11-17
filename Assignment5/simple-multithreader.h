@@ -102,13 +102,13 @@ void parallel_for(int start, int end, std::function<void(int)> && lambda, int nu
         args[i].end = args[i].start + chunk;
     }
     if(pthread_create(&tid[i], NULL, thread_func_vect, (void*)&args[i])!=0){
-      std::cerr << "Error creating thread" << std::endl;
+      std::cerr << "Error creating" << std::endl;
     }
   }
 
   for(int i = 0; i < numThread; i++){
     if(pthread_join(tid[i], NULL) != 0){
-      std::cerr << "Error joining thread" << std::endl;
+      std::cerr << "Error joining" << std::endl;
     }
   }
 }
