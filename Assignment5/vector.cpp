@@ -1,5 +1,8 @@
 #include "simple-multithreader.h"
 #include <assert.h>
+#include <time.h>
+
+clock_t start,end;
 
 int main(int argc, char** argv) {
   // intialize problem size
@@ -14,9 +17,12 @@ int main(int argc, char** argv) {
   std::fill(B, B+size, 1);
   std::fill(C, C+size, 0);
   // start the parallel addition of two vectors
+  start = clock();
   parallel_for(0, size, [&](int i) {
     C[i] = A[i] + B[i];
   }, numThread);
+  end = clock();
+  printf("The exec time is : %f\n",((double)(end-start))/CLOCKS_PER_SEC);
   // verify the result vector
   for(int i=0; i<size; i++) assert(C[i] == 2);
   printf("Test Success\n");
