@@ -26,33 +26,6 @@ int main(int argc, char** argv) {
       C[i][j] += A[i][k] * B[k][j];
     }
   }, numThread);
-
-  for(int i=0; i<size; i++){
-    for(int j=0; j<size; j++){
-      printf("%d ", A[i][j]);
-    }
-    printf("\n");
-  }
-
-  printf("--------------------\n");
-
-  for(int i=0; i<size; i++){
-    for(int j=0; j<size; j++){
-      printf("%d ", B[i][j]);
-    }
-    printf("\n");
-  }
-
-  printf("--------------------\n");
-
-
-  for(int i=0; i<size; i++){
-    for(int j=0; j<size; j++){
-      printf("%d ", C[i][j]);
-    }
-    printf("\n");
-  }
-
   // verify the result matrix
   for(int i=0; i<size; i++) for(int j=0; j<size; j++) assert(C[i][j] == size);
   printf("Test Success. \n");
